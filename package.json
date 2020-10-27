@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/WeiDaiEcosystem/behodler2/issues"
   },
-  "homepage": "https://github.com/WeiDaiEcosystem/behodler2#readme"
+  "homepage": "https://github.com/WeiDaiEcosystem/behodler2#readme",
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.2.0"
+  }
 }
