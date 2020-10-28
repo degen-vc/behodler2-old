@@ -4,9 +4,11 @@ pragma solidity ^0.7.1;
 import "./openzeppelin/IERC20.sol";
 import "./openzeppelin/Ownable.sol";
 import "./openzeppelin/SafeMath.sol";
+import "./facades/Burnable.sol";
 
 contract Scarcity is IERC20, Ownable {
     using SafeMath for uint256;
+    event Mint(address sender, address recipient, uint value);
 
     mapping(address => uint256) internal _balances;
     mapping(address => mapping(address => uint256)) internal _allowances;
@@ -108,6 +110,12 @@ contract Scarcity is IERC20, Ownable {
         _totalSupply = _totalSupply.sub(value);
     }
 
+    function mint(address recipient, uint256 value) internal {
+        _balances[recipient] = _balances[recipient].add(value);
+        _totalSupply = _totalSupply.add(value);
+        emit Mint(msg.sender, recipient, value);
+    }
+
     function _approve(
         address owner,
         address spender,
@@ -139,9 +147,7 @@ contract Scarcity is IERC20, Ownable {
         );
 
         uint256 feeComponent = config.transferFee.mul(amount).div(1000);
-        uint256 burnComponent = sender == address(this)
-            ? 0
-            : config.burnFee.mul(amount).div(1000);
+        uint burnComponent = burnFee(address(this),amount);
         _totalSupply = _totalSupply.sub(burnComponent);
 
         _balances[config.feeDestination] = _balances[config.feeDestination].add(
@@ -157,5 +163,11 @@ contract Scarcity is IERC20, Ownable {
             amount.sub(feeComponent.add(burnComponent))
         );
         emit Transfer(sender, recipient, amount);
+    }
+
+    function burnFee(address token, uint amount) internal returns (uint) {
+        uint256 burnAmount = config.burnFee.mul(amount).div(1000);
+        Burnable(token).burn(burnAmount);
+        return burnAmount;
     }
 }
