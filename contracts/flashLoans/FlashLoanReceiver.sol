@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.1;
 
-contract abstract FlashLoan {
+contract abstract FlashLoanReceiver {
     function execute () public virtual;
 }

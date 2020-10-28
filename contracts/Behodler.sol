@@ -7,7 +7,8 @@ import "./facades/LachesisLike.sol";
 import "./facades/Burnable.sol";
 import "./openzeppelin/SafeMath.sol";
 import "./openzeppelin/IERC20.sol";
-import "./Flashloan.sol";
+import "./flashLoans/FlashLoanReceiver.sol";
+import "./flashLoans/FlashLoanArbiter.sol";
 
 library AddressBalanceCheck {
     function tokenBalance(address token) public view returns (uint){
@@ -46,8 +47,15 @@ contract Behodler is Scarcity {
 
     address public Weth;
     address public Lachesis;
+    address public FlashLoanArbiter;
     uint constant public factor = 64;
     uint constant public root_factor = 32;
+
+    function seed (address weth, address lachesis, address flashLoanArbiter) public onlyOwner {
+        Weth = weth;
+        Lachesis = lachesis;
+        FlashLoanArbiter = flashLoanArbiter;
+    }
 
     //MIN_LIQUIDITY is mainly for fixed point rounding errors. Infinitesimal tokens are rejected. 
     //Keep in mind a typical ERC20 has 59 bits after the point. Bitcoin has 26.
@@ -73,24 +81,30 @@ contract Behodler is Scarcity {
                    uint rootFinalInputBalance,
                    uint rootInitialOutputBalance,
                    uint rootFinalOutputBalanceBeforeSCXBurn,
-                   uint rootFinalOutputBalance) 
+                   uint rootFinalOutputBalance)
                    public 
                    onlyValidToken(inputToken)
                    returns (bool success)  {
+        //balance invariant checks
         balanceInvariantCheck(inputToken.tokenBalance(), rootInitialOutputBalance);
-        balanceInvariantCheck(outputToken.tokenBalance(), rootInitialInputBalance);
-        require(rootFinalOutputBalanceBeforeSCXBurn > rootFinalOutputBalance, "BEHODLER: output leakage check");
-
-        uint deltaRootOutputBalance = rootInitialOutputBalance.sub(rootFinalOutputBalanceBeforeSCXBurn);
-        require(rootInitialInputBalance.sub(rootInitialInputBalance) == deltaRootOutputBalance, "BEHODLER: swap invariant");
+        balanceInvariantCheck(outputToken.tokenBalance(), rootInitialOutputBalance);
+        require(rootFinalOutputBalance > rootFinalOutputBalanceBeforeSCXBurn , "BEHODLER: output leakage check");
+        require(rootFinalInputBalance.sub(rootInitialInputBalance) == rootInitialOutputBalance.sub(rootFinalOutputBalance), "BEHODLER: swap invariant match");
        
+        //transfer in input token
         uint amountToTransferIn = rootFinalInputBalanceBeforeBurn.square().sub(rootInitialInputBalance.square());
         inputToken.transferIn(msg.sender,amountToTransferIn);
         
-        require(amountToTransferIn - burnIfPossible(inputToken,amountToTransferIn) - rootFinalInputBalance.square() < MIN_LIQUIDITY, "BEHODLER: invariant swap in");
+        //check that net input after burning is correctly calculated by user.
+        require(amountToTransferIn - burnIfPossible(inputToken,amountToTransferIn) - rootFinalInputBalance.square() < MIN_LIQUIDITY, "BEHODLER: swap invariant in");
 
-        uint ratio = deltaRootOutputBalance.sub(rootInitialOutputBalance.sub(rootFinalOutputBalance)).mul(1000).div(deltaRootOutputBalance);
-        require(ratio == config.burnFee, "BEHODLER: Scarcity burn invariant check");
+        uint scarcityFeePercentage = (rootFinalOutputBalanceBeforeSCXBurn.sub(rootFinalOutputBalance))
+                    .mul(1000)
+                    .div(
+                        rootInitialOutputBalance.sub(rootFinalOutputBalanceBeforeSCXBurn)
+                        );
+
+        require(scarcityFeePercentage == config.burnFee, "BEHODLER: Scarcity burn fee invariant");
 
         uint amountToTransferOut = rootInitialOutputBalance.square().sub(rootFinalOutputBalance.square());
         outputToken.transferOut(msg.sender, amountToTransferOut);
@@ -142,9 +156,10 @@ contract Behodler is Scarcity {
         success = true;
     }
 
-    //zero fee flashloan. All that is required is for requester to posses a TBC NFT
+    //zero fee flashloan. All that is required is for an arbiter to decide if user can borrow
+    //example: a user must hold 10% of SCX total supply or user must hold an NFT
     function grantFlashLoan (address tokenRequested, uint liquidity, address flashLoanContract) public  {
-        //TODO: check for NFT that grants flashloan power. Possibly destroy NFT
+        require(FlashLoanArbiter.canBorrow(msg.sender), "BEHODLER: cannot borrow flashloan");
         uint balanceBefore = tokenRequested.tokenBalance();
         tokenRequested.transferOut(flashLoanContract, liquidity);
         FlashLoan(flashLoadContract).execute();
