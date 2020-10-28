@@ -6,13 +6,17 @@ import "./openzeppelin/Ownable.sol";
 import "./openzeppelin/SafeMath.sol";
 import "./facades/Burnable.sol";
 
+/*
+    Scarcity is the bonding curve token that underpins Behodler functionality
+    Scarcity burns on transfer and also exacts a fee outside of Behodler.
+ */
 contract Scarcity is IERC20, Ownable {
     using SafeMath for uint256;
     event Mint(address sender, address recipient, uint value);
 
     mapping(address => uint256) internal _balances;
     mapping(address => mapping(address => uint256)) internal _allowances;
-    uint256 private _totalSupply;
+    uint256 internal _totalSupply;
 
     struct BurnConfig {
         uint256 transferFee; // percentage expressed as number betewen 1 and 1000
@@ -128,6 +132,7 @@ contract Scarcity is IERC20, Ownable {
         emit Approval(owner, spender, amount);
     }
 
+    //outside of Behodler, Scarcity transfer incurs a fee.
     function _transfer(
         address sender,
         address recipient,
@@ -140,10 +145,6 @@ contract Scarcity is IERC20, Ownable {
         require(
             recipient != address(0),
             "Scarcity: transfer to the zero address"
-        );
-        require(
-            recipient != address(this),
-            "Scarcity: transfer to Scarcity contract."
         );
 
         uint256 feeComponent = config.transferFee.mul(amount).div(1000);
