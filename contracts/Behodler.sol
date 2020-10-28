@@ -7,6 +7,7 @@ import "./facades/LachesisLike.sol";
 import "./facades/Burnable.sol";
 import "./openzeppelin/SafeMath.sol";
 import "./openzeppelin/IERC20.sol";
+import "./Flashloan.sol";
 
 library AddressBalanceCheck {
     function tokenBalance(address token) public view returns (uint){
@@ -139,6 +140,16 @@ contract Behodler is Scarcity {
         outputToken.transferOut(msg.sender,tokensToRelease);
         emit LiquidityWithdrawn(msg.sender, outputToken,tokensToRelease,scarcityTransferAmount);
         success = true;
+    }
+
+    //zero fee flashloan. All that is required is for requester to posses a TBC NFT
+    function grantFlashLoan (address tokenRequested, uint liquidity, address flashLoanContract) public  {
+        //TODO: check for NFT that grants flashloan power. Possibly destroy NFT
+        uint balanceBefore = tokenRequested.tokenBalance();
+        tokenRequested.transferOut(flashLoanContract, liquidity);
+        FlashLoan(flashLoadContract).execute();
+        uint balanceAfter = tokenRequested.tokenBalance();
+        require(balanceAfter == balanceBefore, "Flashloan repayment failed.");
     }
 
     function burnIfPossible(address token, uint amount) private returns (uint burnt){
