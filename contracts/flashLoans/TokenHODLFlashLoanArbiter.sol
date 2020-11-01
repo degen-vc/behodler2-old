@@ -22,7 +22,7 @@ contract TokenHODLFlashLoanArbiter is FlashLoanArbiter,Ownable {
          holdRatio = ratio;
      }
 
-     function canBorrow (address borrower) public override returns (bool){
+     function canBorrow (address borrower) public view override returns (bool){
          return token.balanceOf(borrower).mul(100).div(token.totalSupply())>=holdRatio;  
      }
 }
