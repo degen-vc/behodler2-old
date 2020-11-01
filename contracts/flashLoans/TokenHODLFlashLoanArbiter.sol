@@ -5,8 +5,8 @@ import "../openzeppelin/Ownable.sol";
 import "../openzeppelin/SafeMath.sol";
 
 interface ERC20{
-    function balanceOf(address holder) external virtual view returns (uint);
-    function totalSupply() external virtual view returns (uint);
+    function balanceOf(address holder) external view returns (uint);
+    function totalSupply() external view returns (uint);
 }
 
 contract TokenHODLFlashLoanArbiter is FlashLoanArbiter,Ownable {
@@ -18,7 +18,7 @@ contract TokenHODLFlashLoanArbiter is FlashLoanArbiter,Ownable {
      }
 
      function setHoldRatio(uint ratio) public onlyOwner {
-         require (ratio <=100, "FLASHLOANS: ratio < 100")
+         require (ratio <=100, "FLASHLOANS: ratio < 100");
          holdRatio = ratio;
      }
 

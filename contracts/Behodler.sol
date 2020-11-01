@@ -45,16 +45,22 @@ contract Behodler is Scarcity {
     event LiquidityWithdrawn(address recipient, address token, uint tokenValue, uint scx);
     event Swap (address sender, address inputToken, address outputToken, uint inputValue, uint outputValue);
 
+    struct TokenValues{
+        uint initialInputBalance;
+        uint amountToTransferIn;
+        uint amountToTransferOut;
+    }
+
     address public Weth;
     address public Lachesis;
-    address public FlashLoanArbiter;
+    FlashLoanArbiter public arbiter;
     uint constant public factor = 64;
     uint constant public root_factor = 32;
 
     function seed (address weth, address lachesis, address flashLoanArbiter) public onlyOwner {
         Weth = weth;
         Lachesis = lachesis;
-        FlashLoanArbiter = flashLoanArbiter;
+        arbiter = FlashLoanArbiter(flashLoanArbiter);
     }
 
     //MIN_LIQUIDITY is mainly for fixed point rounding errors. Infinitesimal tokens are rejected. 
@@ -89,14 +95,20 @@ contract Behodler is Scarcity {
         balanceInvariantCheck(inputToken.tokenBalance(), rootInitialOutputBalance);
         balanceInvariantCheck(outputToken.tokenBalance(), rootInitialOutputBalance);
         require(rootFinalOutputBalance > rootFinalOutputBalanceBeforeSCXBurn , "BEHODLER: output leakage check");
-        require(rootFinalInputBalance.sub(rootInitialInputBalance) == rootInitialOutputBalance.sub(rootFinalOutputBalance), "BEHODLER: swap invariant match");
-       
-        //transfer in input token
-        uint amountToTransferIn = rootFinalInputBalanceBeforeBurn.square().sub(rootInitialInputBalance.square());
-        inputToken.transferIn(msg.sender,amountToTransferIn);
+        require(rootFinalInputBalance.sub(rootInitialInputBalance) == rootInitialOutputBalance.sub(rootFinalOutputBalance), "BEHODLER: swap invariant I/O");
+        
+        //Avoid stack too deep error
+        TokenValues memory tokenValues;
+
+        (tokenValues.initialInputBalance, 
+        tokenValues.amountToTransferIn,
+        tokenValues.amountToTransferOut) = getTokenValues(rootInitialInputBalance, rootFinalInputBalanceBeforeBurn,rootInitialOutputBalance,rootFinalOutputBalance);
+        
+        //transfer input token to Behodler
+        inputToken.transferIn(msg.sender,tokenValues.amountToTransferIn);
         
         //check that net input after burning is correctly calculated by user.
-        require(amountToTransferIn - burnIfPossible(inputToken,amountToTransferIn) - rootFinalInputBalance.square() < MIN_LIQUIDITY, "BEHODLER: swap invariant in");
+        require(tokenValues.amountToTransferIn - burnIfPossible(inputToken,tokenValues.amountToTransferIn) - rootFinalInputBalance.square() -tokenValues.initialInputBalance < MIN_LIQUIDITY, "BEHODLER: swap invariant in");
 
         uint scarcityFeePercentage = (rootFinalOutputBalanceBeforeSCXBurn.sub(rootFinalOutputBalance))
                     .mul(1000)
@@ -106,10 +118,10 @@ contract Behodler is Scarcity {
 
         require(scarcityFeePercentage == config.burnFee, "BEHODLER: Scarcity burn fee invariant");
 
-        uint amountToTransferOut = rootInitialOutputBalance.square().sub(rootFinalOutputBalance.square());
-        outputToken.transferOut(msg.sender, amountToTransferOut);
+
+        outputToken.transferOut(msg.sender, tokenValues.amountToTransferOut);
     
-        emit Swap(msg.sender, inputToken, outputToken,amountToTransferIn,amountToTransferOut);
+        emit Swap(msg.sender, inputToken, outputToken,tokenValues.amountToTransferIn,tokenValues.amountToTransferOut);
         success = true;
     }
 
@@ -159,10 +171,10 @@ contract Behodler is Scarcity {
     //zero fee flashloan. All that is required is for an arbiter to decide if user can borrow
     //example: a user must hold 10% of SCX total supply or user must hold an NFT
     function grantFlashLoan (address tokenRequested, uint liquidity, address flashLoanContract) public  {
-        require(FlashLoanArbiter.canBorrow(msg.sender), "BEHODLER: cannot borrow flashloan");
+        require(arbiter.canBorrow(msg.sender), "BEHODLER: cannot borrow flashloan");
         uint balanceBefore = tokenRequested.tokenBalance();
         tokenRequested.transferOut(flashLoanContract, liquidity);
-        FlashLoan(flashLoadContract).execute();
+        FlashLoanReceiver(flashLoanContract).execute();
         uint balanceAfter = tokenRequested.tokenBalance();
         require(balanceAfter == balanceBefore, "Flashloan repayment failed.");
     }
@@ -178,5 +190,15 @@ contract Behodler is Scarcity {
     function setValidToken (address token, bool valid, bool burnable) public onlyLachesis {
         validTokens[token] = valid;
         tokenBurnable[token] = burnable;
+    }
+
+    function getTokenValues(uint rootInitialInputBalance, 
+                            uint rootFinalInputBalanceBeforeBurn, 
+                            uint rootInitialOutputBalance,
+                            uint rootFinalOutputBalance) public pure returns (uint, uint, uint) {
+        uint initial = rootInitialInputBalance.square();
+        uint input = rootFinalInputBalanceBeforeBurn.square().sub(initial);
+        uint output= rootInitialOutputBalance.square().sub(rootFinalOutputBalance.square());
+      return (initial, input, output);
     }
 }
