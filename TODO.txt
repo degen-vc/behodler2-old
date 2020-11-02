@@ -1,8 +1,9 @@
 1. Implement an NFT FlashLoanArbiter -- later
 2. Weth-> Eth --done
 3. MockWeth -- done
-4. Migration script
+4. Migration script -- used openzeppelin's testing this time
 5. Test Scarcity erc20 stuff as well as fees
+5.1 Hook into Scarcity minting like a whitelist.
 6. Test Behodler's functions
     -> add liquidity and withdraw liquidity must neutralize
     -> test that effects of swap (fees, burning etc) are the same as add and withdraw separately 

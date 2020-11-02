@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "compile":"touch build/contracts/horse && rm -rf build/contracts/* && truffle compile"
+    "compile": "touch build/contracts/horse && rm -rf build/contracts/* && truffle compile",
+    "test": "npm run compile && mocha --exit --recursive"
   },
   "repository": {
     "type": "git",
@@ -21,5 +22,11 @@
   "homepage": "https://github.com/WeiDaiEcosystem/behodler2#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^3.2.0"
+  },
+  "devDependencies": {
+    "@openzeppelin/test-environment": "^0.1.6",
+    "@openzeppelin/test-helpers": "^0.5.9",
+    "chai": "^4.2.0",
+    "mocha": "^8.2.0"
   }
 }

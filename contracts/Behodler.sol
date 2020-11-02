@@ -50,11 +50,18 @@ library CommonMath {
 	The Behodler is a smart contract that can see the prices of all tokens simultaneously without need for composition or delay.
 	The hodl part of Behodler refers to the fact that with every trade of a token pair, the liquidity pool of each token held by Behodler increases
 
-    Behodler 1 performed square root calculations which are tedious and gas intensive for fixed point arithmetic algorithms. 
+    Behodler 1 performed square root calculations which are gas intensive for fixed point arithmetic algorithms. 
     To save gas, Behodler2 never performs square root calculations. It just checks the numbers passed in by the user and reverts if needs be. 
     This techique is called invariant checking and offloads maximum calculation to clients while guaranteeing no cheating is possible.
-    Operations were also duplicated. For instance, a swap was a scarcity purchase followed by a scarcity sale. Instead, cutting out 
+    In Behodler 1 some operations were duplicated. For instance, a swap was a scarcity purchase followed by a scarcity sale. Instead, cutting out 
     the middle scarcity allows the factor scaling to be dropped altogether.
+
+    By bringing Scarcity, Janus, Kharon and Behodler together in one contract, Behodler 2 avoids the EXT_CALL gas fees and can take gas saving shortcuts with Scarcity
+    transfers. The drawback to this approach is less flexibility with fees in the way that Kharon allowed.
+
+    Behodler 2 now has Flashloan support. Instead of charging a liquidity growing fee, Behodler 2 requires the user fulfil some requirement 
+    such as holding an NFT or staking Scarcity. This allows for zero fee flash loans while still benefiting the ecosystem.
+    
  */
 contract Behodler is Scarcity {
     using SafeMath for uint256;
@@ -155,7 +162,13 @@ contract Behodler is Scarcity {
         uint256 rootInitialOutputBalance,
         uint256 rootFinalOutputBalanceBeforeSCXBurn,
         uint256 rootFinalOutputBalance
-    ) public payable determineSender(inputToken) onlyValidToken(inputToken) returns (bool success) {
+    )
+        public
+        payable
+        determineSender(inputToken)
+        onlyValidToken(inputToken)
+        returns (bool success)
+    {
         //balance invariant checks
         balanceInvariantCheck(
             inputToken.tokenBalance(),
@@ -233,9 +246,16 @@ contract Behodler is Scarcity {
         uint256 rootInitialBalance,
         uint256 rootFinalBalanceBeforeBurn,
         uint256 rootFinalBalanceAfterBurn
-    ) public payable determineSender(inputToken) onlyValidToken(inputToken) returns (bool success) {
+    )
+        public
+        payable
+        determineSender(inputToken)
+        onlyValidToken(inputToken)
+        returns (bool success)
+    {
+        uint initialBalance = inputToken.tokenBalance();
         //invariants on the input parameters are checked.
-        balanceInvariantCheck(inputToken.tokenBalance(), rootInitialBalance);
+        balanceInvariantCheck(initialBalance, rootInitialBalance);
         require(
             rootFinalBalanceBeforeBurn >= rootFinalBalanceAfterBurn,
             "BEHODLER: burn parameters invariant."
@@ -245,9 +265,10 @@ contract Behodler is Scarcity {
         uint256 initialTransferAmount = rootFinalBalanceBeforeBurn.square().sub(
             rootInitialBalance.square()
         );
+
         inputToken.transferIn(inputSender, initialTransferAmount);
         uint256 balanceAfterBurn = initialTransferAmount -
-            burnIfPossible(inputToken, initialTransferAmount);
+            burnIfPossible(inputToken, initialTransferAmount) + initialBalance;
         require(
             balanceAfterBurn > MIN_LIQUIDITY,
             "BEHODLER: minimum liquidity"
@@ -308,16 +329,16 @@ contract Behodler is Scarcity {
         );
 
         //release tokens to user
-        uint256 tokensToRelease = (
-            outputToken.tokenBalance().sub(rootFinalBalance.square())
+        uint256 tokensToRelease = outputToken.tokenBalance().sub(
+            rootFinalBalance.square()
         );
 
-        if(outputToken == Weth) {
-             IWeth(Weth).withdraw(tokensToRelease);
-             address payable sender = msg.sender;
-		    (bool unwapped, ) = sender.call{value:tokensToRelease}("");
-		    require(unwapped, "BEHODLER: Unwrapping of Weth failed.");
-        }else {
+        if (outputToken == Weth) {
+            IWeth(Weth).withdraw(tokensToRelease);
+            address payable sender = msg.sender;
+            (bool unwapped, ) = sender.call{value: tokensToRelease}("");
+            require(unwapped, "BEHODLER: Unwrapping of Weth failed.");
+        } else {
             outputToken.transferOut(msg.sender, tokensToRelease);
         }
         emit LiquidityWithdrawn(
