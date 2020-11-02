@@ -13,10 +13,12 @@ import "./facades/Burnable.sol";
 contract Scarcity is IERC20, Ownable {
     using SafeMath for uint256;
     event Mint(address sender, address recipient, uint value);
+    event Burn (uint value);
 
     mapping(address => uint256) internal _balances;
     mapping(address => mapping(address => uint256)) internal _allowances;
     uint256 internal _totalSupply;
+    address public migrator;
 
     struct BurnConfig {
         uint256 transferFee; // percentage expressed as number betewen 1 and 1000
@@ -27,14 +29,18 @@ contract Scarcity is IERC20, Ownable {
     BurnConfig public config;
 
     function configureScarcity(
-        uint8 transferFee,
-        uint8 burnFee,
+        uint transferFee,
+        uint burnFee,
         address feeDestination
     ) public onlyOwner {
         require(config.transferFee + config.burnFee < 1000);
         config.transferFee = transferFee;
         config.burnFee = burnFee;
         config.feeDestination = feeDestination;
+    }
+
+    function setMigrator (address m) public onlyOwner {
+        migrator = m;
     }
 
     function name() public pure returns (string memory) {
@@ -112,12 +118,18 @@ contract Scarcity is IERC20, Ownable {
             "SCARCITY: insufficient funds"
         );
         _totalSupply = _totalSupply.sub(value);
+        emit Burn(value);
     }
 
     function mint(address recipient, uint256 value) internal {
         _balances[recipient] = _balances[recipient].add(value);
         _totalSupply = _totalSupply.add(value);
         emit Mint(msg.sender, recipient, value);
+    }
+
+    function migrateMint(address recipient, uint value) public {
+        require(msg.sender == migrator,"SCARCITY: Migration contract only");
+        mint(recipient, value);
     }
 
     function _approve(
@@ -148,8 +160,9 @@ contract Scarcity is IERC20, Ownable {
         );
 
         uint256 feeComponent = config.transferFee.mul(amount).div(1000);
-        uint burnComponent = burnFee(address(this),amount);
+        uint burnComponent = config.burnFee.mul(amount).div(1000);
         _totalSupply = _totalSupply.sub(burnComponent);
+        emit Burn(burnComponent);
 
         _balances[config.feeDestination] = _balances[config.feeDestination].add(
             feeComponent

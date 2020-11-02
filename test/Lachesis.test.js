@@ -1,25 +1,19 @@
-// test/Box.test.js
-
-// Load dependencies
 const { accounts, contract } = require('@openzeppelin/test-environment');
 const { BN, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
-// Load compiled artifacts
 const Lachesis = contract.fromArtifact('Lachesis');
 const mockToken1 = contract.fromArtifact('MockToken1')
 
-// Start test block
 describe('Lachesis', function () {
     const [owner, notOwner] = accounts;
 
     beforeEach(async function () {
-        // Deploy a new Box contract for,  each test
         this.lachesis = await Lachesis.new({ from: owner });
         this.mockToken = await mockToken1.new({ from: owner })
     });
 
-    it('failes to measure when non admin attempts', async function () {
+    it('fails to measure when non admin attempts', async function () {
         await expectRevert(this.lachesis.measure(this.mockToken.address, false, false, { from: notOwner }), "Ownable: caller is not the owner")
     });
 
