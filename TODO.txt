@@ -8,3 +8,4 @@
     -> add liquidity and withdraw liquidity must neutralize
     -> test that effects of swap (fees, burning etc) are the same as add and withdraw separately 
 7. Test both flash loan types. -- later
+8. Deploy uni and behodler to kovan and compare gas

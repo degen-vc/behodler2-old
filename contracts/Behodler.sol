@@ -170,13 +170,15 @@ contract Behodler is Scarcity {
         returns (bool success)
     {
         //balance invariant checks
-        balanceInvariantCheck(
+        rootInvariantCheck(
             inputToken.tokenBalance(),
-            rootInitialOutputBalance
+            rootInitialOutputBalance,
+            "BEHODLER: invariant swap input 1"
         );
-        balanceInvariantCheck(
+        rootInvariantCheck(
             outputToken.tokenBalance(),
-            rootInitialOutputBalance
+            rootInitialOutputBalance,
+            "BEHODLER: invariant swap output 1"
         );
         require(
             rootFinalOutputBalance > rootFinalOutputBalanceBeforeSCXBurn,
@@ -240,9 +242,10 @@ contract Behodler is Scarcity {
         success = true;
     }
 
-    //Low level function: To save gas, Behodler never performs square root calculations. It just checks the calculations and reverts if needs be.
+    //Low level function
     function addLiquidity(
         address inputToken,
+        uint256 amount,
         uint256 rootInitialBalance,
         uint256 rootFinalBalanceBeforeBurn,
         uint256 rootFinalBalanceAfterBurn
@@ -251,32 +254,33 @@ contract Behodler is Scarcity {
         payable
         determineSender(inputToken)
         onlyValidToken(inputToken)
-        returns (bool success)
+        returns (uint256)
     {
-        uint initialBalance = inputToken.tokenBalance();
+        uint256 initialBalance = inputToken.tokenBalance();
         //invariants on the input parameters are checked.
-        balanceInvariantCheck(initialBalance, rootInitialBalance);
+        rootInvariantCheck(
+            initialBalance,
+            rootInitialBalance,
+            "BEHODLER: invariant liquidity balance 1"
+        );
         require(
             rootFinalBalanceBeforeBurn >= rootFinalBalanceAfterBurn,
             "BEHODLER: burn parameters invariant."
         );
 
-        //token transferred to Behodler and burnt if burnable.
-        uint256 initialTransferAmount = rootFinalBalanceBeforeBurn.square().sub(
-            rootInitialBalance.square()
-        );
-
-        inputToken.transferIn(inputSender, initialTransferAmount);
-        uint256 balanceAfterBurn = initialTransferAmount -
-            burnIfPossible(inputToken, initialTransferAmount) + initialBalance;
+        inputToken.transferIn(inputSender, amount);
+        uint256 balanceAfterBurn = amount -
+            burnIfPossible(inputToken, amount) +
+            initialBalance;
         require(
             balanceAfterBurn > MIN_LIQUIDITY,
             "BEHODLER: minimum liquidity"
         );
-        require(
-            balanceAfterBurn - (rootFinalBalanceAfterBurn.square()) <
-                MIN_LIQUIDITY,
-            "BEHODLER: burn effect invariant"
+        //  return (balanceAfterBurn,rootFinalBalanceAfterBurn);
+        rootInvariantCheck(
+            balanceAfterBurn,
+            rootFinalBalanceAfterBurn,
+            "BEHODLER: liquidity burn invariant"
         );
 
         //Scarcity minted and sent to user.
@@ -286,10 +290,10 @@ contract Behodler is Scarcity {
         emit LiquidityAdded(
             msg.sender,
             inputToken,
-            initialTransferAmount,
+            amount,
             deltaScarcity
         );
-        success = true;
+        return deltaScarcity;
     }
 
     //Low level function
@@ -299,7 +303,11 @@ contract Behodler is Scarcity {
         uint256 rootFinalBalance,
         uint256 rootFinalBalanceBeforeBurn
     ) public returns (bool success) {
-        balanceInvariantCheck(outputToken.tokenBalance(), rootInitialBalance);
+        rootInvariantCheck(
+            outputToken.tokenBalance(),
+            rootInitialBalance,
+            "BEHODLER: invariant liquidity balance 2"
+        );
         require(
             rootFinalBalanceBeforeBurn < rootFinalBalance,
             "BEHODLER: Scarcity burn invariance check"
@@ -336,8 +344,8 @@ contract Behodler is Scarcity {
         if (outputToken == Weth) {
             IWeth(Weth).withdraw(tokensToRelease);
             address payable sender = msg.sender;
-            (bool unwapped, ) = sender.call{value: tokensToRelease}("");
-            require(unwapped, "BEHODLER: Unwrapping of Weth failed.");
+            (bool unwrapped, ) = sender.call{value: tokensToRelease}("");
+            require(unwrapped, "BEHODLER: Unwrapping of Weth failed.");
         } else {
             outputToken.transferOut(msg.sender, tokensToRelease);
         }
@@ -376,13 +384,15 @@ contract Behodler is Scarcity {
         if (tokenBurnable[token]) burnt = burnFee(token, amount);
     }
 
-    function balanceInvariantCheck(uint256 actual, uint256 rootParameter)
-        private
-        pure
-    {
+    function rootInvariantCheck(
+        uint256 actual,
+        uint256 rootParameter,
+        string memory error
+    ) private pure {
         require(
-            actual - (rootParameter * rootParameter) < MIN_LIQUIDITY,
-            "BEHODLER: balance invariant."
+            actual >= (rootParameter.square()) &&
+                actual < (rootParameter + 1).square(),
+            error
         );
     }
 

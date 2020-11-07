@@ -9,7 +9,7 @@ contract MockToken1 is IERC20 {
     mapping(address => uint256) balances;
     mapping(address => mapping(address => uint256)) allowances;
 
-    function setSupply(uint supply) public {
+    function setSupply(uint256 supply) public {
         _totalSupply = supply;
     }
 
@@ -69,8 +69,8 @@ contract MockToken1 is IERC20 {
         _totalSupply = _totalSupply.add(amount);
     }
 
-    function burn(address holder, uint256 amount) public {
-        balances[holder] = balances[holder].sub(amount);
+    function burn(uint256 amount) public {
+        balances[msg.sender] = balances[msg.sender].sub(amount);
         _totalSupply = _totalSupply.sub(amount);
     }
 
