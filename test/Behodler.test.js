@@ -1,5 +1,6 @@
 const { accounts, contract } = require('@openzeppelin/test-environment');
 const { expectEvent, expectRevert, ether } = require('@openzeppelin/test-helpers');
+const balance = require('@openzeppelin/test-helpers/src/balance');
 const { expect, assert } = require('chai');
 const bigNum = require('./helpers/BigIntUtil')
 
@@ -55,7 +56,7 @@ describe('Behodler', function () {
         await this.invalidToken.mint(trader2, ONE)
     });
 
-    it('adding burnable token as liquidity generates the correct volume of Scarcity', async function () {
+    it('adding burnable token as liquidity in 2 batches generates the correct volume of Scarcity', async function () {
         //ADD 1 FINNEY WHEN BEHODLER BALANCE OF TOKEN ZERO
         const originalBalance = ONE
         const expectedBalanceAfter = originalBalance - FINNEY
@@ -82,7 +83,6 @@ describe('Behodler', function () {
 
         await this.behodler.addLiquidity(this.burnableToken.address, 21n * FINNEY, 31224989, 148323969, 146458185, { from: trader1 })
         //21450000000000000
-        // console.log(`balanceAfterBurn: ${result[0].toString()}, rootfinal: ${result[1].toString()}`)
         const expectedBalanceAfterSecondAdd = expectedBalanceAfter - 21n * FINNEY
         const tokenBalanceOfUserAfterSecondAdd = await bigNum.BNtoBigInt(this.burnableToken.balanceOf.call(trader1))
         expect(tokenBalanceOfUserAfterSecondAdd).to.equal(expectedBalanceAfterSecondAdd)
@@ -90,9 +90,68 @@ describe('Behodler', function () {
         const scarcityBalanceAfterSecondAdd = await bigNum.BNtoBigInt(this.behodler.balanceOf.call(trader1))
 
         const expectedScarcityAfterSecondAdd = 629033114806517760n
-        console.log('expecto: ' + expectedScarcityAfterSecondAdd)
-        //1% discrepancy
-        assert.isTrue(scarcityBalanceAfterSecondAdd === expectedScarcityAfterSecondAdd,`${expectedScarcityAfterSecondAdd}; ${scarcityBalanceAfterSecondAdd}`)
+        assert.isTrue(scarcityBalanceAfterSecondAdd === expectedScarcityAfterSecondAdd, `${expectedScarcityAfterSecondAdd}; ${scarcityBalanceAfterSecondAdd}`)
     })
 
+    it('add liquidity as burnable token in 1 batch generates correct amount of Scarcity', async function () {
+        await this.burnableToken.approve(this.behodler.address, 22n * FINNEY, { from: trader1 })
+        await this.behodler.addLiquidity(this.burnableToken.address, 22n * FINNEY, 0, 148323969, 146458185, { from: trader1 })
+
+        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
+        const expectedScarcityAfter = 629033114806517760n
+        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter)
+    })
+
+    it('adding liquidity as non burnable token does not burn', async function () {
+        await this.regularToken.approve(this.behodler.address, 22n * FINNEY, { from: trader1 })
+        await this.behodler.addLiquidity(this.regularToken.address, 22n * FINNEY, 0, 148323969, 148323969, { from: trader1 })
+
+        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
+        const expectedScarcityAfter = 637046596067917824n
+        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter, `${scarcityBalanceAfter}; ${expectedScarcityAfter}`)
+    })
+
+    it('adding liquidity as Eth produces correct scarcity', async function () {
+        const weth = await this.behodler.Weth.call()
+        expect(weth).to.be.a("string").that.equals(this.weth.address)
+
+        await this.behodler.addLiquidity(weth, 22n * FINNEY, 0, 148323969, 148323969, { from: trader1, value: `${22n * FINNEY}` })
+
+        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
+        const expectedScarcityAfter = 637046596067917824n
+        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter, `${scarcityBalanceAfter}; ${expectedScarcityAfter}`)
+    })
+
+    it("withdrawing scarcity transfers out the correct number of tokens", async function () {
+        //scarcity supply shrinks
+        //token output is less than input due to scx burning.
+        //add tokens. This should not be done via a mock. It has to be a little end-to-end
+        await this.regularToken.approve(this.behodler.address, 22n * FINNEY, { from: trader1 })
+        await this.behodler.addLiquidity(this.regularToken.address, 22n * FINNEY, 0, 148323969, 148323969, { from: trader1 })
+        const tokenBalanceBeforeWithdraw = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
+        const scarcityBalanceBeforeWithdraw = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
+
+        const scxTotalSupplyBefore = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
+
+        await this.behodler.withdrawLiquidity(this.regularToken.address, scarcityBalanceBeforeWithdraw, 148323969, 3708100, 0, { from: trader1 })
+        const scxAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
+        assert.isTrue(scxAfter === 0n)//.to.equal(0n)
+
+        const scxTotalSupplyAfter = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
+        expect(scxTotalSupplyAfter).to.equal(scxTotalSupplyBefore - scarcityBalanceBeforeWithdraw)
+
+        //scx burn fee translates into burn fee squared reduction in token
+        const tokenBalanceAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
+        const balanceChange = tokenBalanceAfter - tokenBalanceBeforeWithdraw
+        const feeOnToken = 0.000625 // scx burn fee squared = (0.025)^2
+        const netTokenFactor = 0.999375 // 1-feeOnToken
+        const million = 1000000n //adjustmentFactor
+        const expectedBalanceChange = ((22n * 999375n * FINNEY) / million).toString()
+        //   const expectedBalanceChange = ((2145n * FINNEY) / 100n).toString()
+        const expectedApprox = expectedBalanceChange.substring(0, 6)
+        const balanceChangeApprox = balanceChange.toString().substring(0, 6)
+
+        //fixed point errors makes this only accurate to so many decimal places
+        assert.equal(balanceChangeApprox, expectedApprox, `${balanceChangeApprox.toString()}; ${expectedApprox}`)
+    })
 })

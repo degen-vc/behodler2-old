@@ -100,7 +100,7 @@ contract Behodler is Scarcity {
     address private inputSender;
     uint256 public constant factor = 64;
     uint256 public constant root_factor = 32;
-    bool locked = false;
+    bool unlocked = true;
 
     function seed(
         address weth,
@@ -125,32 +125,31 @@ contract Behodler is Scarcity {
     }
 
     modifier onlyValidToken(address token) {
-        require(validTokens[token], "BEHODLER: token invalid");
+        require(
+            validTokens[token] || (token != address(0) && token == Weth),
+            "BEHODLER: token invalid"
+        );
         _;
     }
 
     modifier determineSender(address inputToken) {
-        require(!locked, "BEHODLER: Reentrancy guard active.");
-        locked = true;
         if (msg.value > 0) {
             require(
                 inputToken == Weth,
                 "BEHODLER: Eth only valid for Weth trades."
             );
-            IWeth(Weth).deposit{value: msg.value}();
             inputSender = address(this);
         } else {
             inputSender = msg.sender;
         }
         _;
-        locked = false;
     }
 
     modifier lock {
-        require(!locked, "BEHODLER: Reentrancy guard active.");
-        locked = true;
+        require(unlocked, "BEHODLER: Reentrancy guard active.");
+        unlocked = false;
         _;
-        locked = false;
+        unlocked = true;
     }
 
     function swap(
@@ -167,6 +166,7 @@ contract Behodler is Scarcity {
         payable
         determineSender(inputToken)
         onlyValidToken(inputToken)
+        lock
         returns (bool success)
     {
         //balance invariant checks
@@ -175,6 +175,7 @@ contract Behodler is Scarcity {
             rootInitialOutputBalance,
             "BEHODLER: invariant swap input 1"
         );
+        if (inputToken == Weth) IWeth(Weth).deposit{value: msg.value}();
         rootInvariantCheck(
             outputToken.tokenBalance(),
             rootInitialOutputBalance,
@@ -254,6 +255,7 @@ contract Behodler is Scarcity {
         payable
         determineSender(inputToken)
         onlyValidToken(inputToken)
+        lock
         returns (uint256)
     {
         uint256 initialBalance = inputToken.tokenBalance();
@@ -263,12 +265,17 @@ contract Behodler is Scarcity {
             rootInitialBalance,
             "BEHODLER: invariant liquidity balance 1"
         );
+
         require(
             rootFinalBalanceBeforeBurn >= rootFinalBalanceAfterBurn,
             "BEHODLER: burn parameters invariant."
         );
+        if (inputToken == Weth) {
+            IWeth(Weth).deposit{value: msg.value}();
+        } else {
+            inputToken.transferIn(inputSender, amount);
+        }
 
-        inputToken.transferIn(inputSender, amount);
         uint256 balanceAfterBurn = amount -
             burnIfPossible(inputToken, amount) +
             initialBalance;
@@ -276,7 +283,7 @@ contract Behodler is Scarcity {
             balanceAfterBurn > MIN_LIQUIDITY,
             "BEHODLER: minimum liquidity"
         );
-        //  return (balanceAfterBurn,rootFinalBalanceAfterBurn);
+
         rootInvariantCheck(
             balanceAfterBurn,
             rootFinalBalanceAfterBurn,
@@ -287,24 +294,21 @@ contract Behodler is Scarcity {
         uint256 deltaScarcity = (rootFinalBalanceAfterBurn -
             rootInitialBalance) << root_factor;
         mint(msg.sender, deltaScarcity);
-        emit LiquidityAdded(
-            msg.sender,
-            inputToken,
-            amount,
-            deltaScarcity
-        );
+        emit LiquidityAdded(msg.sender, inputToken, amount, deltaScarcity);
         return deltaScarcity;
     }
 
     //Low level function
     function withdrawLiquidity(
         address outputToken,
+        uint256 amount,
         uint256 rootInitialBalance,
         uint256 rootFinalBalance,
         uint256 rootFinalBalanceBeforeBurn
-    ) public returns (bool success) {
+    ) public returns (uint256 tokensToRelease) {
+        uint256 outputTokenBalance = outputToken.tokenBalance();
         rootInvariantCheck(
-            outputToken.tokenBalance(),
+            outputTokenBalance,
             rootInitialBalance,
             "BEHODLER: invariant liquidity balance 2"
         );
@@ -312,34 +316,30 @@ contract Behodler is Scarcity {
             rootFinalBalanceBeforeBurn < rootFinalBalance,
             "BEHODLER: Scarcity burn invariance check"
         );
-        uint256 deltaRootBalance = rootInitialBalance.sub(
-            rootFinalBalanceBeforeBurn,
-            "BEHODLER: widthdrawal balance must diminish"
-        );
 
         //Transfer and burn Scarcity
-        uint256 scarcityTransferAmount = deltaRootBalance << root_factor;
-        uint256 scarcityToBurn = config.burnFee.mul(scarcityTransferAmount).div(
-            1000
-        );
+        uint256 scarcityToBurn = config.burnFee.mul(amount).div(1000);
+
         _balances[msg.sender] = _balances[msg.sender].sub(
-            scarcityTransferAmount,
+            amount,
             "BEHODLER: insufficient Scarcity to withdraw"
         );
-        _totalSupply = _totalSupply.sub(scarcityTransferAmount);
+        _totalSupply = _totalSupply.sub(amount);
 
         //invariant on user input
-        uint256 scarcityMinusBurn = (rootFinalBalance - rootInitialBalance) <<
-            root_factor;
+        //precision errors imply we sometimes only approach the true value
+        uint256 scarcityMinusBurn1 = (rootInitialBalance -
+            (rootFinalBalance + 1)) << root_factor;
+        uint256 scarcityMinusBurn2 = (rootInitialBalance -
+            (rootFinalBalance - 1)) << root_factor;
+        require(scarcityMinusBurn1 < scarcityMinusBurn2);
         require(
-            scarcityTransferAmount.sub(scarcityMinusBurn) == scarcityToBurn,
+            amount.sub(scarcityMinusBurn1) >= scarcityToBurn &&
+                amount.sub(scarcityMinusBurn2) <= scarcityToBurn,
             "BEHODLER: Scarcity burnt invariant"
         );
 
-        //release tokens to user
-        uint256 tokensToRelease = outputToken.tokenBalance().sub(
-            rootFinalBalance.square()
-        );
+        tokensToRelease = rootInitialBalance.square().sub(rootFinalBalance.square());
 
         if (outputToken == Weth) {
             IWeth(Weth).withdraw(tokensToRelease);
@@ -353,9 +353,8 @@ contract Behodler is Scarcity {
             msg.sender,
             outputToken,
             tokensToRelease,
-            scarcityTransferAmount
+            amount
         );
-        success = true;
     }
 
     //zero fee flashloan. All that is required is for an arbiter to decide if user can borrow
