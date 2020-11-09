@@ -1,11 +1,13 @@
 1. Implement an NFT FlashLoanArbiter -- later
 2. Weth-> Eth --done
 3. MockWeth -- done
-4. Migration script -- used openzeppelin's testing this time
-5. Test Scarcity erc20 stuff as well as fees
-5.1 Hook into Scarcity minting like a whitelist.
-6. Test Behodler's functions
-    -> add liquidity and withdraw liquidity must neutralize
-    -> test that effects of swap (fees, burning etc) are the same as add and withdraw separately 
+4. Migration script -- necessary for front end testing
+5. Test Scarcity erc20 stuff as well as fees --DONE
+5.1 Hook into Scarcity minting like a whitelist. -- for now Migrator
+6. Test Behodler's functions 
+    -> add liquidity and withdraw liquidity must neutralize -- DONE
+    -> swap works --DONE
+    -> test that effects of swap (fees, burning etc) are the same as add and withdraw separately
+    -> optimize add and withdraw 
 7. Test both flash loan types. -- later
 8. Deploy uni and behodler to kovan and compare gas

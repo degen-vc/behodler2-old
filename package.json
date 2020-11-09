@@ -8,7 +8,8 @@
   },
   "scripts": {
     "compile": "touch build/contracts/horse && rm -rf build/contracts/* && truffle compile",
-    "test": "npm run compile && mocha --exit --recursive --timeout 10000"
+    "test": "npm run compile && mocha --exit --recursive",
+    "mocha":"mocha"
   },
   "repository": {
     "type": "git",

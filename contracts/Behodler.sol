@@ -100,6 +100,7 @@ contract Behodler is Scarcity {
     address private inputSender;
     uint256 public constant factor = 64;
     uint256 public constant root_factor = 32;
+    uint256 public constant root_1000 = 31;
     bool unlocked = true;
 
     function seed(
@@ -152,15 +153,32 @@ contract Behodler is Scarcity {
         unlocked = true;
     }
 
+    /*
+    Let config.burnFee be b. 
+    Let F = 1-b
+    Let input token be I and Output token be O
+    _i is initial and _f is final. Eg. I_i is initial input token balance
+    The swap equation, when simplified, is given by
+    √F(I_f - √I_i) = (√O_i - √O_f)/(F)
+    adjusting for fixed point precision gives   
+    √F(I_f - √I_i)/√(1000) = ((√O_i - √O_f)*1000)/(F)
+    if I is not burnable then LHS F becomes 1.
+    Scarcity is always burnable so that RHS F always has a value.
+    The contract takes I_f - I_i as payment and pays O_i = O_f.
+    Note that squaring and square rooting leads to precision errors 
+    which front end clients must tolerate.
+    The parameter naming corresponds to the equation elucidated above where 
+    the prefix root replaces √
+    */
+
     function swap(
         address inputToken,
         address outputToken,
-        uint256 rootInitialInputBalance,
-        uint256 rootFinalInputBalanceBeforeBurn,
-        uint256 rootFinalInputBalance,
-        uint256 rootInitialOutputBalance,
-        uint256 rootFinalOutputBalanceBeforeSCXBurn,
-        uint256 rootFinalOutputBalance
+        uint256 rootF, //remember that F is 1-1000 so b=20% means F is 800, implying rootF == 28
+        uint256 rootI_f,
+        uint256 rootI_i,
+        uint256 rootO_i,
+        uint256 rootO_f
     )
         public
         payable
@@ -169,76 +187,60 @@ contract Behodler is Scarcity {
         lock
         returns (bool success)
     {
-        //balance invariant checks
         rootInvariantCheck(
             inputToken.tokenBalance(),
-            rootInitialOutputBalance,
-            "BEHODLER: invariant swap input 1"
+            rootI_i,
+            "BEHODLER: invariant swap input"
         );
         if (inputToken == Weth) IWeth(Weth).deposit{value: msg.value}();
-        rootInvariantCheck(
-            outputToken.tokenBalance(),
-            rootInitialOutputBalance,
-            "BEHODLER: invariant swap output 1"
-        );
-        require(
-            rootFinalOutputBalance > rootFinalOutputBalanceBeforeSCXBurn,
-            "BEHODLER: output leakage check"
-        );
-        require(
-            rootFinalInputBalance.sub(rootInitialInputBalance) ==
-                rootInitialOutputBalance.sub(rootFinalOutputBalance),
-            "BEHODLER: swap invariant I/O"
-        );
 
-        //Avoid stack too deep error
-        TokenValues memory tokenValues;
+        uint256 F = 1000 - config.burnFee;
+        if (tokenBurnable[inputToken]) {
+            rootInvariantCheck(F, rootF, "BEHODLER: invariant burn fee");
+        } else {
+            require(rootF == 31, "BEHODLER: input token not burnable");
+        }
 
-        (
-            tokenValues.initialInputBalance,
-            tokenValues.amountToTransferIn,
-            tokenValues.amountToTransferOut
-        ) = getTokenValues(
-            rootInitialInputBalance,
-            rootFinalInputBalanceBeforeBurn,
-            rootInitialOutputBalance,
-            rootFinalOutputBalance
-        );
+        //assert swap equation holds: √F(I_f - √I_i)/√(1000) = ((√O_i - √O_f)*1000)/(F)
+        //new scope to avoid stack too deep error
+        {
+            uint256 LHS = rootF.mul(rootI_f - rootI_i).div(root_1000);
 
-        //transfer input token to Behodler
-        inputToken.transferIn(inputSender, tokenValues.amountToTransferIn);
+            //Precision loss requires we narrow in on the truth
+            uint256 upperF = F == 1000 ? F : F + 2;
+            uint256 lowerF = F == 0 ? F : F - 2;
+            uint256 RHS_1 = ((rootO_i - rootO_f).mul(1000)) / upperF;
+            uint256 RHS_2 = ((rootO_i - rootO_f).mul(1000)) / lowerF;
+            require(
+                LHS >= RHS_1 && LHS <= RHS_2,
+                "BEHODLER: swap equation invariant"
+            );
+        }
 
-        //check that net input after burning is correctly calculated by user.
-        require(
-            tokenValues.amountToTransferIn -
-                burnIfPossible(inputToken, tokenValues.amountToTransferIn) -
-                rootFinalInputBalance.square() -
-                tokenValues.initialInputBalance <
-                MIN_LIQUIDITY,
-            "BEHODLER: swap invariant in"
-        );
+        uint256 inputAmount = rootI_f.square() - rootI_i.square();
+        uint256 tokensToRelease = rootO_i.square() - rootO_f.square();
 
-        uint256 scarcityFeePercentage = (
-            rootFinalOutputBalanceBeforeSCXBurn.sub(rootFinalOutputBalance)
-        )
-            .mul(1000)
-            .div(
-            rootInitialOutputBalance.sub(rootFinalOutputBalanceBeforeSCXBurn)
-        );
+        inputToken.transferIn(inputSender, inputAmount);
+        uint burntAmount = burnIfPossible(inputToken,inputAmount);
+        if(rootF ==1000){
+            require(burntAmount == 0, "BEHODLER: burning disabled");
+        }
 
-        require(
-            scarcityFeePercentage == config.burnFee,
-            "BEHODLER: Scarcity burn fee invariant"
-        );
+        if (outputToken == Weth) {
+            IWeth(Weth).withdraw(tokensToRelease);
+            address payable sender = msg.sender;
+            (bool unwrapped, ) = sender.call{value: tokensToRelease}("");
+            require(unwrapped, "BEHODLER: Unwrapping of Weth failed.");
+        } else {
+            outputToken.transferOut(msg.sender, tokensToRelease);
+        }
 
-        outputToken.transferOut(msg.sender, tokenValues.amountToTransferOut);
-
-        emit Swap(
+         emit Swap(
             msg.sender,
             inputToken,
             outputToken,
-            tokenValues.amountToTransferIn,
-            tokenValues.amountToTransferOut
+            inputAmount,
+            tokensToRelease
         );
         success = true;
     }
@@ -339,7 +341,9 @@ contract Behodler is Scarcity {
             "BEHODLER: Scarcity burnt invariant"
         );
 
-        tokensToRelease = rootInitialBalance.square().sub(rootFinalBalance.square());
+        tokensToRelease = rootInitialBalance.square().sub(
+            rootFinalBalance.square()
+        );
 
         if (outputToken == Weth) {
             IWeth(Weth).withdraw(tokensToRelease);
