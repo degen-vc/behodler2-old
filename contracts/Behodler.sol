@@ -60,8 +60,8 @@ library CommonMath {
     transfers. The drawback to this approach is less flexibility with fees in the way that Kharon allowed.
 
     Behodler 2 now has Flashloan support. Instead of charging a liquidity growing fee, Behodler 2 requires the user fulfil some requirement 
-    such as holding an NFT or staking Scarcity. This allows for zero fee flash loans while still benefiting the ecosystem.
-    
+    such as holding an NFT or staking Scarcity. This allows for zero fee flash loans that are front runner resistant and 
+    allows a secondary flashloan market to evolve.
  */
 contract Behodler is Scarcity {
     using SafeMath for uint256;
@@ -159,16 +159,22 @@ contract Behodler is Scarcity {
     Let input token be I and Output token be O
     _i is initial and _f is final. Eg. I_i is initial input token balance
     The swap equation, when simplified, is given by
-    √F(I_f - √I_i) = (√O_i - √O_f)/(F)
-    adjusting for fixed point precision gives   
-    √F(I_f - √I_i)/√(1000) = ((√O_i - √O_f)*1000)/(F)
-    if I is not burnable then LHS F becomes 1.
+    √F(√I_f - √I_i) = (√O_i - √O_f)/(F)
+    Keep in mind that F is measured as a number between 1 and 1000 to allow for fixed
+    point calculating of % so we need to adjust for this in the implemented equation:   
+    √F(√I_f - √I_i)/√(1000) = ((√O_i - √O_f)*1000)/(F)
+    If I is not burnable then LHS F becomes 1. This is why we don't simplify the
+    appearance of F on both sides of the equation.
     Scarcity is always burnable so that RHS F always has a value.
-    The contract takes I_f - I_i as payment and pays O_i = O_f.
+    The contract takes I_f - I_i as payment and pays O_i - O_f.
     Note that squaring and square rooting leads to precision errors 
     which front end clients must tolerate.
     The parameter naming corresponds to the equation elucidated above where 
-    the prefix root replaces √
+    the prefix root replaces the √ symbol
+
+    Technical note on ETH handling: we don't duplicate functions for accepting Eth as an input. Instead we wrap on receipt 
+    and apply a reentrancy guard. The determineSender modifier fixes an isse in Behodler 1 which required the user to approve
+    both sending and receiving Eth because of the nature of Weth deposit and withdraw functionality.
     */
 
     function swap(
@@ -192,7 +198,6 @@ contract Behodler is Scarcity {
             rootI_i,
             "BEHODLER: invariant swap input"
         );
-        if (inputToken == Weth) IWeth(Weth).deposit{value: msg.value}();
 
         uint256 F = 1000 - config.burnFee;
         if (tokenBurnable[inputToken]) {
@@ -220,9 +225,18 @@ contract Behodler is Scarcity {
         uint256 inputAmount = rootI_f.square() - rootI_i.square();
         uint256 tokensToRelease = rootO_i.square() - rootO_f.square();
 
-        inputToken.transferIn(inputSender, inputAmount);
-        uint burntAmount = burnIfPossible(inputToken,inputAmount);
-        if(rootF ==1000){
+        if (inputToken == Weth) {
+            require(
+                msg.value == inputAmount,
+                "BEHODLER: Insufficient Ether sent"
+            );
+            IWeth(Weth).deposit{value: msg.value}();
+        } else {
+            inputToken.transferIn(inputSender, inputAmount);
+        }
+
+        uint256 burntAmount = burnIfPossible(inputToken, inputAmount);
+        if (rootF == 1000) {
             require(burntAmount == 0, "BEHODLER: burning disabled");
         }
 
@@ -235,7 +249,7 @@ contract Behodler is Scarcity {
             outputToken.transferOut(msg.sender, tokensToRelease);
         }
 
-         emit Swap(
+        emit Swap(
             msg.sender,
             inputToken,
             outputToken,
@@ -273,6 +287,7 @@ contract Behodler is Scarcity {
             "BEHODLER: burn parameters invariant."
         );
         if (inputToken == Weth) {
+            require(msg.value == amount, "BEHODLER: Insufficient Ether sent");
             IWeth(Weth).deposit{value: msg.value}();
         } else {
             inputToken.transferIn(inputSender, amount);

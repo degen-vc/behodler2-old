@@ -10,4 +10,25 @@
     -> test that effects of swap (fees, burning etc) are the same as add and withdraw separately
     -> optimize add and withdraw 
 7. Test both flash loan types. -- later
-8. Deploy uni and behodler to kovan and compare gas
+8. Deploy uni and behodler to kovan and compare gas --DONE
+
+Steps to test gas consumption:
+1. Deploy 2 tokens on Remix
+-> Token1:0x2Baf655afFe2FcbafB5EfCe36756Fe0CC52247d7
+-> Token2: 0x635eE9df0eE42CE1534eb1176F67f4a9eBd89a7e
+2. Move uniswap contracts to remix. Deploy optimized
+-> Factory:0x3946630C15e2c905e7be80c316B27863A2301EF3
+-> WETH: 0x64777f5323E05f7958650C15De592f591C823787
+-> Router: 0x7F2fB7BF5c37ED7B0556dEc10971501528cc5C10
+-> Pair of Token1/Token2: 0x932F49cD8A85a6eC6Cae4D8328EF4b76940741F5
+swap eye for scx on
+ mainnet: https://etherscan.io/tx/0x7615979d179197a1baa5ea65cf80bea808fa24892b5e1ed7813c27de0f11d57b
+3. Move Behodler contracts to remix. Deploy optimized. --DONE
+4. Add liquditity to Uniswap. Gas price 30, Gas consumed 138,794. TX fee 0.00416382
+41.
+5. Add exact same quantities of tokens in swap test to generate Scarcity
+6. Replicate swap test and swap same portions on uniswap, comparing gas
+
+Behodler swap: https://kovan.etherscan.io/tx/0x65e2eaa5a912505a90418811f1231c34eabdc0f938d1e1bddf1e7e157140e0e3
+
+Conclusion: Uses less gas than uniswap and burns tokens

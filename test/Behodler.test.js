@@ -171,13 +171,13 @@ describe('Behodler', async function () {
         //=> 999*(rootOnePointTwoOne - rootOne )/1000 = (rootSixteen - root_finalO)
         //=>root_finalO = rootSixteen - 999*(rootOnePointTwoOne - rootOne )/1000 
         const expected_rootO_f = rootSixteen - 975n * (rootOnePointTwoOne - rootOne) / 1000n
-
+        console.log('expeted ' + expected_rootO_f)
         //expect to receive 0.789 of O in exchange for 0.2 Input, implying that Input is more scarce and more valuable
         const inputBalanceBefore = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
         const outputBalanceBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
 
         await this.behodler.swap(this.burnableToken.address, this.regularToken.address, 31, rootOnePointTwoOne, rootOne, rootSixteen, expected_rootO_f, { from: trader1 });
-     
+
         const inputBalanceAfter = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
         const outputBalanceAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
 
@@ -185,6 +185,6 @@ describe('Behodler', async function () {
         const outputChange = (outputBalanceAfter - outputBalanceBefore).toString()
 
         assert.isTrue(inputChange === '210000000000000000')
-        assert.isTrue(outputChange === '770493750000000000') 
+        assert.isTrue(outputChange === '770493750000000000')
     })
 })

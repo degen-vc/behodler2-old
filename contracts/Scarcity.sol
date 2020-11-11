@@ -119,6 +119,7 @@ contract Scarcity is IERC20, Ownable {
         );
         _totalSupply = _totalSupply.sub(value);
         emit Burn(value);
+        return true;
     }
 
     function mint(address recipient, uint256 value) internal {
