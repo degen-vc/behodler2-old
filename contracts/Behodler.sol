@@ -44,6 +44,15 @@ library CommonMath {
     }
 }
 
+//an address used exclusively to receive ERC20 tokens and do nothing else.
+contract BlackHole {
+    //in case a burnable token is accidentally sent to the blackhole
+    function attemptBurn(address token) public {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        Burnable(token).burn(balance);
+    }
+}
+
 /*
 	Behodler orchestrates trades using an omnischedule bonding curve.
 	The name is inspired by the Beholder of D&D, a monster with multiple arms ending in eyes peering in all directions.
@@ -98,10 +107,15 @@ contract Behodler is Scarcity {
     address public Lachesis;
     FlashLoanArbiter public arbiter;
     address private inputSender;
+    address public blackHole; //burn location
     uint256 public constant factor = 64;
     uint256 public constant root_factor = 32;
     uint256 public constant root_1000 = 31;
     bool unlocked = true;
+
+    constructor() public {
+        blackHole = address(new BlackHole());
+    }
 
     function seed(
         address weth,
@@ -200,12 +214,6 @@ contract Behodler is Scarcity {
         );
 
         uint256 F = 1000 - config.burnFee;
-        if (tokenBurnable[inputToken]) {
-            rootInvariantCheck(F, rootF, "BEHODLER: invariant burn fee");
-        } else {
-            require(rootF == 31, "BEHODLER: input token not burnable");
-        }
-
         //assert swap equation holds: √F(I_f - √I_i)/√(1000) = ((√O_i - √O_f)*1000)/(F)
         //new scope to avoid stack too deep error
         {
@@ -235,7 +243,7 @@ contract Behodler is Scarcity {
             inputToken.transferIn(inputSender, inputAmount);
         }
 
-        uint256 burntAmount = burnIfPossible(inputToken, inputAmount);
+        uint256 burntAmount = burn(inputToken, inputAmount);
         if (rootF == 1000) {
             require(burntAmount == 0, "BEHODLER: burning disabled");
         }
@@ -294,7 +302,7 @@ contract Behodler is Scarcity {
         }
 
         uint256 balanceAfterBurn = amount -
-            burnIfPossible(inputToken, amount) +
+            burn(inputToken, amount) +
             initialBalance;
         require(
             balanceAfterBurn > MIN_LIQUIDITY,
@@ -313,6 +321,71 @@ contract Behodler is Scarcity {
         mint(msg.sender, deltaScarcity);
         emit LiquidityAdded(msg.sender, inputToken, amount, deltaScarcity);
         return deltaScarcity;
+    }
+
+    //Low level function
+    function withdrawLiquidityTest(
+        address outputToken,
+        uint256 amount,
+        uint256 rootInitialBalance,
+        uint256 rootFinalBalance,
+        uint256 rootFinalBalanceBeforeBurn
+    ) public returns (uint256, uint256) {
+        uint256 outputTokenBalance = outputToken.tokenBalance();
+        rootInvariantCheck(
+            outputTokenBalance,
+            rootInitialBalance,
+            "BEHODLER: invariant liquidity balance 2"
+        );
+        require(
+            rootFinalBalanceBeforeBurn < rootFinalBalance,
+            "BEHODLER: Scarcity burn invariance check"
+        );
+
+        //Transfer and burn Scarcity
+        uint256 scarcityToBurn = config.burnFee.mul(amount).div(1000);
+
+        _balances[msg.sender] = _balances[msg.sender].sub(
+            amount,
+            "BEHODLER: insufficient Scarcity to withdraw"
+        );
+        _totalSupply = _totalSupply.sub(amount);
+
+        //invariant on user input
+        //precision errors imply we sometimes only approach the true value
+        uint256 scarcityMinusBurn1 = (rootInitialBalance -
+            (rootFinalBalance + 1)) << root_factor;
+        uint256 scarcityMinusBurn2 = (rootInitialBalance -
+            (rootFinalBalance - 1)) << root_factor;
+        return (
+            amount.sub((rootInitialBalance - rootFinalBalance) << root_factor),
+            scarcityToBurn
+        );
+        // require(scarcityMinusBurn1 < scarcityMinusBurn2);
+        // require(
+        //     amount.sub(scarcityMinusBurn1) >= scarcityToBurn &&
+        //         amount.sub(scarcityMinusBurn2) <= scarcityToBurn,
+        //     "BEHODLER: Scarcity burnt invariant"
+        // );
+
+        // tokensToRelease = rootInitialBalance.square().sub(
+        //     rootFinalBalance.square()
+        // );
+
+        // if (outputToken == Weth) {
+        //     IWeth(Weth).withdraw(tokensToRelease);
+        //     address payable sender = msg.sender;
+        //     (bool unwrapped, ) = sender.call{value: tokensToRelease}("");
+        //     require(unwrapped, "BEHODLER: Unwrapping of Weth failed.");
+        // } else {
+        //     outputToken.transferOut(msg.sender, tokensToRelease);
+        // }
+        // emit LiquidityWithdrawn(
+        //     msg.sender,
+        //     outputToken,
+        //     tokensToRelease,
+        //     amount
+        // );
     }
 
     //Low level function
@@ -395,11 +468,16 @@ contract Behodler is Scarcity {
         require(balanceAfter == balanceBefore, "Flashloan repayment failed.");
     }
 
-    function burnIfPossible(address token, uint256 amount)
+    function burn(address token, uint256 amount)
         private
         returns (uint256 burnt)
     {
         if (tokenBurnable[token]) burnt = burnFee(token, amount);
+        else {
+            uint256 fee = config.burnFee.mul(amount).div(1000);
+            token.transferOut(blackHole, fee);
+            return fee;
+        }
     }
 
     function rootInvariantCheck(
