@@ -221,7 +221,7 @@ contract Behodler is Scarcity {
 
             //Precision loss requires we narrow in on the truth
             uint256 upperF = F == 1000 ? F : F + 2;
-            uint256 lowerF = F == 0 ? F : F - 2;
+            uint256 lowerF = F == 0 ? 1 : F - 2;
             uint256 RHS_1 = ((rootO_i - rootO_f).mul(1000)) / upperF;
             uint256 RHS_2 = ((rootO_i - rootO_f).mul(1000)) / lowerF;
             require(
@@ -321,71 +321,6 @@ contract Behodler is Scarcity {
         mint(msg.sender, deltaScarcity);
         emit LiquidityAdded(msg.sender, inputToken, amount, deltaScarcity);
         return deltaScarcity;
-    }
-
-    //Low level function
-    function withdrawLiquidityTest(
-        address outputToken,
-        uint256 amount,
-        uint256 rootInitialBalance,
-        uint256 rootFinalBalance,
-        uint256 rootFinalBalanceBeforeBurn
-    ) public returns (uint256, uint256) {
-        uint256 outputTokenBalance = outputToken.tokenBalance();
-        rootInvariantCheck(
-            outputTokenBalance,
-            rootInitialBalance,
-            "BEHODLER: invariant liquidity balance 2"
-        );
-        require(
-            rootFinalBalanceBeforeBurn < rootFinalBalance,
-            "BEHODLER: Scarcity burn invariance check"
-        );
-
-        //Transfer and burn Scarcity
-        uint256 scarcityToBurn = config.burnFee.mul(amount).div(1000);
-
-        _balances[msg.sender] = _balances[msg.sender].sub(
-            amount,
-            "BEHODLER: insufficient Scarcity to withdraw"
-        );
-        _totalSupply = _totalSupply.sub(amount);
-
-        //invariant on user input
-        //precision errors imply we sometimes only approach the true value
-        uint256 scarcityMinusBurn1 = (rootInitialBalance -
-            (rootFinalBalance + 1)) << root_factor;
-        uint256 scarcityMinusBurn2 = (rootInitialBalance -
-            (rootFinalBalance - 1)) << root_factor;
-        return (
-            amount.sub((rootInitialBalance - rootFinalBalance) << root_factor),
-            scarcityToBurn
-        );
-        // require(scarcityMinusBurn1 < scarcityMinusBurn2);
-        // require(
-        //     amount.sub(scarcityMinusBurn1) >= scarcityToBurn &&
-        //         amount.sub(scarcityMinusBurn2) <= scarcityToBurn,
-        //     "BEHODLER: Scarcity burnt invariant"
-        // );
-
-        // tokensToRelease = rootInitialBalance.square().sub(
-        //     rootFinalBalance.square()
-        // );
-
-        // if (outputToken == Weth) {
-        //     IWeth(Weth).withdraw(tokensToRelease);
-        //     address payable sender = msg.sender;
-        //     (bool unwrapped, ) = sender.call{value: tokensToRelease}("");
-        //     require(unwrapped, "BEHODLER: Unwrapping of Weth failed.");
-        // } else {
-        //     outputToken.transferOut(msg.sender, tokensToRelease);
-        // }
-        // emit LiquidityWithdrawn(
-        //     msg.sender,
-        //     outputToken,
-        //     tokensToRelease,
-        //     amount
-        // );
     }
 
     //Low level function
