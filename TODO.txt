@@ -11,6 +11,7 @@
     -> optimize add and withdraw 
 7. Test both flash loan types. -- later
 8. Deploy uni and behodler to kovan and compare gas --DONE
+9. Write a recipient contract that distributes fees to mining, dev and dao
 
 Steps to test gas consumption:
 1. Deploy 2 tokens on Remix
@@ -32,3 +33,5 @@ swap eye for scx on
 Behodler swap: https://kovan.etherscan.io/tx/0x65e2eaa5a912505a90418811f1231c34eabdc0f938d1e1bddf1e7e157140e0e3
 
 Conclusion: Uses less gas than uniswap and burns tokens
+
+IDEA to explore: 
