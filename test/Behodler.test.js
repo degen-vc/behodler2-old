@@ -31,6 +31,7 @@ describe('Behodler', async function () {
         this.weth = await MockWeth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
         this.burnableToken = await MockToken1.new({ from: owner })
+        this.eye = await MockToken1.new({ from: owner })
         this.invalidToken = await MockToken1.new({ from: owner })
         this.flashLoanArbiter = await OpenArbiter.new({ from: owner })
         this.lachesis = await Lachesis.new({ from: owner })
@@ -38,7 +39,7 @@ describe('Behodler', async function () {
         await this.burnableToken.mint(trader1, 2n * TEN)
         await this.invalidToken.mint(trader1, TEN)
 
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, { from: owner })
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.eye.address, { from: owner })
         await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
         await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })
@@ -126,7 +127,7 @@ describe('Behodler', async function () {
         const scxTotalSupplyBefore = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
 
         await this.behodler.withdrawLiquidity(this.regularToken.address, scarcityBalanceBeforeWithdraw, 146458185, 3661455, 0, { from: trader1 })
-      //  console.log(`inferred: ${result[0].toString()}, true: ${result[1].toString()}, difference: ${result[0].sub(result[1]).toString()}`)
+        //  console.log(`inferred: ${result[0].toString()}, true: ${result[1].toString()}, difference: ${result[0].sub(result[1]).toString()}`)
         const scxAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
         assert.isTrue(scxAfter === 0n)//.to.equal(0n)
 

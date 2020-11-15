@@ -46,10 +46,37 @@ library CommonMath {
 
 //an address used exclusively to receive ERC20 tokens and do nothing else.
 contract BlackHole {
-    //in case a burnable token is accidentally sent to the blackhole
-    function attemptBurn(address token) public {
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        Burnable(token).burn(balance);
+    struct buyBack{
+        address eye;
+        address scx;
+        uint SCXprice;
+        uint  EYEprice;
+    }
+    
+    buyBack public config;
+
+    constructor (address scx,address eye){
+        config.eye = eye;
+        config.scx = scx;
+        config.SCXprice = 1<<50;
+        config.EYEprice = 1<<50;
+    }
+
+    function hawking(address token,bool scx) public {
+        uint liquidityBalance = IERC20(token).balanceOf(address(this));
+        require(liquidityBalance>0, "BEHODLER: no liquidity to claim.");
+        address input = scx?config.scx:config.eye;
+        uint price = scx?config.SCXprice:config.EYEprice;
+        require(IERC20(input).transferFrom(msg.sender,address(this),price), "BEHODLER: Insufficient funds.");
+        Burnable(input).burn(price);
+        uint newPrice = price*2;
+        newPrice = newPrice>price?newPrice:uint(-1);
+        if(scx){
+            config.SCXprice = newPrice;
+        }else {
+            config.EYEprice = newPrice;
+        }
+        IERC20(token).transfer(msg.sender,liquidityBalance);
     }
 }
 
@@ -113,18 +140,16 @@ contract Behodler is Scarcity {
     uint256 public constant root_1000 = 31;
     bool unlocked = true;
 
-    constructor() public {
-        blackHole = address(new BlackHole());
-    }
-
     function seed(
         address weth,
         address lachesis,
-        address flashLoanArbiter
+        address flashLoanArbiter,
+        address eye
     ) public onlyOwner {
         Weth = weth;
         Lachesis = lachesis;
         arbiter = FlashLoanArbiter(flashLoanArbiter);
+        blackHole = address(new BlackHole(address(this),eye));
     }
 
     //MIN_LIQUIDITY is mainly for fixed point rounding errors. Infinitesimal tokens are rejected.
