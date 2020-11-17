@@ -39,6 +39,10 @@ contract Scarcity is IERC20, Ownable {
         config.feeDestination = feeDestination;
     }
 
+    function getConfiguration() public view returns (uint,uint,address)  {
+        return (config.transferFee,config.burnFee,config.feeDestination);
+    }
+
     function setMigrator (address m) public onlyOwner {
         migrator = m;
     }
