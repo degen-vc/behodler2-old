@@ -11,6 +11,8 @@ const MockToken1 = contract.fromArtifact('MockToken1')
 const MockWeth = contract.fromArtifact('MockWeth')
 const OpenArbiter = contract.fromArtifact('OpenArbiter')
 const Lachesis = contract.fromArtifact('Lachesis')
+const LiquidityReceiver = contract.fromArtifact('LiquidityReceiver')
+const PyroToken = contract.fromArtifact('Pyrotoken');
 
 const TEN = 10000000000000000000n
 const ONE = 1000000000000000000n
@@ -18,7 +20,7 @@ const FINNEY = 1000000000000000n
 
 
 describe('Behodler1', async function () {
-    const [owner, trader1, trader2, feeDestination] = accounts;
+    const [owner, trader1, trader2, feeDestination, weiDaiReserve] = accounts;
 
     beforeEach(async function () {
         const addressBalanceCheckLib = await AddressBalanceCheck.new()
@@ -28,8 +30,12 @@ describe('Behodler1', async function () {
         await Behodler.link('CommonMath', commonMathLib.address)
         this.behodler = await Behodler.new({ from: owner });
 
+        this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
         this.weth = await MockWeth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
+        this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
+
+        this.dai = await MockToken1.new({ from: owner })
         this.burnableToken = await MockToken1.new({ from: owner })
         this.eye = await MockToken1.new({ from: owner })
         this.invalidToken = await MockToken1.new({ from: owner })
@@ -39,7 +45,7 @@ describe('Behodler1', async function () {
         await this.burnableToken.mint(trader1, 2n * TEN)
         await this.invalidToken.mint(trader1, TEN)
 
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.eye.address, { from: owner })
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
         await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
         await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })
@@ -128,7 +134,7 @@ describe('Behodler1', async function () {
         const scxTotalSupplyBefore = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
 
         await this.behodler.withdrawLiquidity(this.regularToken.address, scarcityBalanceBeforeWithdraw, 146458185, 3661455, 0, { from: trader1 })
-        //  console.log(`inferred: ${result[0].toString()}, true: ${result[1].toString()}, difference: ${result[0].sub(result[1]).toString()}`)
+
         const scxAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
         assert.isTrue(scxAfter === 0n)//.to.equal(0n)
 
@@ -174,7 +180,6 @@ describe('Behodler1', async function () {
         //=> 999*(rootOnePointTwoOne - rootOne )/1000 = (rootSixteen - root_finalO)
         //=>root_finalO = rootSixteen - 999*(rootOnePointTwoOne - rootOne )/1000 
         const expected_rootO_f = rootSixteen - 975n * (rootOnePointTwoOne - rootOne) / 1000n
-        console.log('expected ' + expected_rootO_f)
         //expect to receive 0.789 of O in exchange for 0.2 Input, implying that Input is more scarce and more valuable
         const inputBalanceBefore = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
         const outputBalanceBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
@@ -190,4 +195,87 @@ describe('Behodler1', async function () {
         assert.isTrue(inputChange === '210000000000000000')
         assert.isTrue(outputChange === '770493750000000000')
     })
+})
+
+describe('Behodler2: Pyrotoken', async function () {
+    const [owner, trader1, trader2, feeDestination, weiDaiReserve] = accounts;
+
+    beforeEach(async function () {
+        const addressBalanceCheckLib = await AddressBalanceCheck.new()
+        const commonMathLib = await CommonMath.new()
+        await Behodler.detectNetwork()
+        await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
+        await Behodler.link('CommonMath', commonMathLib.address)
+        this.behodler = await Behodler.new({ from: owner });
+
+        this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
+        this.weth = await MockWeth.new({ from: owner })
+        this.regularToken = await MockToken1.new({ from: owner })
+        this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
+
+        this.dai = await MockToken1.new({ from: owner })
+        this.burnableToken = await MockToken1.new({ from: owner })
+        this.eye = await MockToken1.new({ from: owner })
+        this.invalidToken = await MockToken1.new({ from: owner })
+        this.flashLoanArbiter = await OpenArbiter.new({ from: owner })
+        this.lachesis = await Lachesis.new({ from: owner })
+        await this.regularToken.mint(trader1, 2n * TEN)
+        await this.burnableToken.mint(trader1, 2n * TEN)
+        await this.invalidToken.mint(trader1, TEN)
+
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
+        await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
+        await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
+        await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })
+
+        await this.lachesis.setBehodler(this.behodler.address, { from: owner })
+        await this.lachesis.updateBehodler(this.regularToken.address, { from: owner })
+        await this.lachesis.updateBehodler(this.burnableToken.address, { from: owner })
+    })
+
+    it('adding liquidity as non burnable fills liquidity receiver which fills pyrotoken', async function () {
+        this.timeout(500000);
+
+        await this.regularToken.approve(this.behodler.address, 22n * BigInt(Math.pow(10, 15)), { from: trader1 })
+        await this.behodler.addLiquidity(this.regularToken.address, "22000000000000000", 0, 148323969, 146458185, { from: trader1 })
+
+        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
+        const expectedScarcityAfter = 629033114806517760n
+        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter, `${scarcityBalanceAfter}; ${expectedScarcityAfter}`)
+
+        await this.regularToken.approve(this.pyroRegular.address, FINNEY, { from: trader1 })
+
+        const balanceOfLiquidityReceiverBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.liquidityReceiver.address))
+        assert.equal(balanceOfLiquidityReceiverBefore.toString(), (BigInt(55 * Math.pow(10, 13))).toString());
+        const redeemRateBeforeMint = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
+        assert.equal(redeemRateBeforeMint.toString(), ONE.toString())
+
+        await this.pyroRegular.mint(FINNEY, { from: trader1 })
+        const pyroBalance = await bigNum.BNtoBigInt(this.pyroRegular.balanceOf(trader1))
+        assert.equal(FINNEY.toString(), pyroBalance.toString())
+        const redeemRateAfterMint = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
+        assert.equal(redeemRateAfterMint.toString(), (1550000000000000000n).toString())
+
+        const balanceOfLiquidityReceiverAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.liquidityReceiver.address))
+        assert.equal(balanceOfLiquidityReceiverAfter.toString(), "0");
+
+
+
+        const redeemRateAfter = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
+        assert.equal(redeemRateAfter.toString(), "1550000000000000000");
+
+        await this.pyroRegular.mint(FINNEY, { from: trader1 })
+        const redeemRateAfterSecondMint = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
+
+        const pyroBalanceAfterSecondMint =await bigNum.BNtoBigInt(this.pyroRegular.balanceOf(trader1))
+        let difference = pyroBalanceAfterSecondMint-pyroBalance;
+        assert.equal(difference.toString(),(645161290322580n).toString())
+
+        await this.pyroRegular.mint(FINNEY, { from: trader1 })
+        const pyroBalanceAfterThirdMint =await bigNum.BNtoBigInt(this.pyroRegular.balanceOf(trader1))
+        difference = pyroBalanceAfterThirdMint-pyroBalanceAfterSecondMint;
+        assert.equal(difference.toString(),(645161290322580n).toString())
+
+    })
+
 })

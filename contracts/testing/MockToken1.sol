@@ -9,6 +9,9 @@ contract MockToken1 is IERC20 {
     mapping(address => uint256) balances;
     mapping(address => mapping(address => uint256)) allowances;
 
+    string public name = "Mock";
+    string public symbol = "MCK";
+
     function setSupply(uint256 supply) public {
         _totalSupply = supply;
     }
@@ -62,6 +65,7 @@ contract MockToken1 is IERC20 {
             "ERC20: not approved to send"
         );
         _transfer(sender, recipient, amount);
+        return true;
     }
 
     function mint(address recipient, uint256 amount) public {

@@ -43,43 +43,6 @@ library CommonMath {
         return num * num;
     }
 }
-
-//an address used exclusively to receive ERC20 tokens and do nothing else.
-contract BlackHole {
-    struct buyBack{
-        address eye;
-        address scx;
-        uint SCXprice;
-        uint  EYEprice;
-    }
-    
-    buyBack public config;
-
-    constructor (address scx,address eye){
-        config.eye = eye;
-        config.scx = scx;
-        config.SCXprice = 1<<50;
-        config.EYEprice = 1<<50;
-    }
-
-    function hawking(address token,bool scx) public {
-        uint liquidityBalance = IERC20(token).balanceOf(address(this));
-        require(liquidityBalance>0, "BEHODLER: no liquidity to claim.");
-        address input = scx?config.scx:config.eye;
-        uint price = scx?config.SCXprice:config.EYEprice;
-        require(IERC20(input).transferFrom(msg.sender,address(this),price), "BEHODLER: Insufficient funds.");
-        Burnable(input).burn(price);
-        uint newPrice = price*2;
-        newPrice = newPrice>price?newPrice:uint(-1);
-        if(scx){
-            config.SCXprice = newPrice;
-        }else {
-            config.EYEprice = newPrice;
-        }
-        IERC20(token).transfer(msg.sender,liquidityBalance);
-    }
-}
-
 /*
 	Behodler orchestrates trades using an omnischedule bonding curve.
 	The name is inspired by the Beholder of D&D, a monster with multiple arms ending in eyes peering in all directions.
@@ -130,11 +93,16 @@ contract Behodler is Scarcity {
         uint256 amountToTransferOut;
     }
 
+    struct weidaiTokens{
+        address dai;
+        address reserve;
+    }
+    weidaiTokens WD;
     address public Weth;
     address public Lachesis;
+    address pyroTokenLiquidityReceiver;
     FlashLoanArbiter public arbiter;
     address private inputSender;
-    address public blackHole; //burn location
     uint256 public constant factor = 64;
     uint256 public constant root_factor = 32;
     uint256 public constant root_1000 = 31;
@@ -144,12 +112,16 @@ contract Behodler is Scarcity {
         address weth,
         address lachesis,
         address flashLoanArbiter,
-        address eye
+        address _pyroTokenLiquidityReceiver,
+        address weidaiReserve,
+        address dai
     ) public onlyOwner {
         Weth = weth;
         Lachesis = lachesis;
         arbiter = FlashLoanArbiter(flashLoanArbiter);
-        blackHole = address(new BlackHole(address(this),eye));
+        pyroTokenLiquidityReceiver = _pyroTokenLiquidityReceiver;
+        WD.reserve = weidaiReserve;
+        WD.dai = dai;
     }
 
     //MIN_LIQUIDITY is mainly for fixed point rounding errors. Infinitesimal tokens are rejected.
@@ -370,7 +342,7 @@ contract Behodler is Scarcity {
         //Transfer and burn Scarcity
         uint256 scarcityToBurn = config.burnFee.mul(amount).div(1000);
 
-        _balances[msg.sender] = _balances[msg.sender].sub(
+        balances[msg.sender] = balances[msg.sender].sub(
             amount,
             "BEHODLER: insufficient Scarcity to withdraw"
         );
@@ -409,23 +381,24 @@ contract Behodler is Scarcity {
         );
     }
 
-    //zero fee flashloan. All that is required is for an arbiter to decide if user can borrow
+    //Zero fee flashloan. All that is required is for an arbiter to decide if user can borrow
     //example: a user must hold 10% of SCX total supply or user must hold an NFT
     //The initial arbiter will have no constraints.
+    //The flashloan system on behodler is inverted. Instead of being able to borrow any individual,
+    //the borrower asks for SCX. Theoretically you can borrow more SCX than currently exists so long 
+    //as you can think of a clever way to pay it back.
+    //Note: Borrower doesn't have to send scarcity back, they just need to have high enough balance.
     function grantFlashLoan(
-        address tokenRequested,
-        uint256 liquidity,
+        uint256 amount,
         address flashLoanContract
     ) public lock {
         require(
             arbiter.canBorrow(msg.sender),
             "BEHODLER: cannot borrow flashloan"
         );
-        uint256 balanceBefore = tokenRequested.tokenBalance();
-        tokenRequested.transferOut(flashLoanContract, liquidity);
+        balances[msg.sender] = balances[msg.sender].add(amount);
         FlashLoanReceiver(flashLoanContract).execute();
-        uint256 balanceAfter = tokenRequested.tokenBalance();
-        require(balanceAfter == balanceBefore, "Flashloan repayment failed.");
+        balances[msg.sender] = balances[msg.sender].sub(amount, "BEHODLER: Flashloan repayment failed");
     }
 
     function burn(address token, uint256 amount)
@@ -433,9 +406,13 @@ contract Behodler is Scarcity {
         returns (uint256 burnt)
     {
         if (tokenBurnable[token]) burnt = burnFee(token, amount);
+        else if (token==WD.dai){
+            uint256 fee = config.burnFee.mul(amount).div(1000);
+            token.transferOut(WD.reserve,fee);
+        }
         else {
             uint256 fee = config.burnFee.mul(amount).div(1000);
-            token.transferOut(blackHole, fee);
+            token.transferOut(pyroTokenLiquidityReceiver, fee);
             return fee;
         }
     }

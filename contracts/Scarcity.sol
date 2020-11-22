@@ -15,7 +15,7 @@ contract Scarcity is IERC20, Ownable {
     event Mint(address sender, address recipient, uint value);
     event Burn (uint value);
 
-    mapping(address => uint256) internal _balances;
+    mapping(address => uint256) internal balances;
     mapping(address => mapping(address => uint256)) internal _allowances;
     uint256 internal _totalSupply;
     address public migrator;
@@ -69,7 +69,7 @@ contract Scarcity is IERC20, Ownable {
         view
         returns (uint256)
     {
-        return _balances[account];
+        return balances[account];
     }
 
     function transfer(address recipient, uint256 amount)
@@ -117,7 +117,7 @@ contract Scarcity is IERC20, Ownable {
     }
 
     function burn(uint256 value) external returns (bool) {
-        _balances[msg.sender] = _balances[msg.sender].sub(
+        balances[msg.sender] = balances[msg.sender].sub(
             value,
             "SCARCITY: insufficient funds"
         );
@@ -127,7 +127,7 @@ contract Scarcity is IERC20, Ownable {
     }
 
     function mint(address recipient, uint256 value) internal {
-        _balances[recipient] = _balances[recipient].add(value);
+        balances[recipient] = balances[recipient].add(value);
         _totalSupply = _totalSupply.add(value);
         emit Mint(msg.sender, recipient, value);
     }
@@ -169,16 +169,16 @@ contract Scarcity is IERC20, Ownable {
         _totalSupply = _totalSupply.sub(burnComponent);
         emit Burn(burnComponent);
 
-        _balances[config.feeDestination] = _balances[config.feeDestination].add(
+        balances[config.feeDestination] = balances[config.feeDestination].add(
             feeComponent
         );
 
-        _balances[sender] = _balances[sender].sub(
+        balances[sender] = balances[sender].sub(
             amount,
             "Scarcity: transfer amount exceeds balance"
         );
 
-        _balances[recipient] = _balances[recipient].add(
+        balances[recipient] = balances[recipient].add(
             amount.sub(feeComponent.add(burnComponent))
         );
         emit Transfer(sender, recipient, amount);
