@@ -391,14 +391,14 @@ contract Behodler is Scarcity {
     function grantFlashLoan(
         uint256 amount,
         address flashLoanContract
-    ) public lock {
+    ) public {
         require(
             arbiter.canBorrow(msg.sender),
             "BEHODLER: cannot borrow flashloan"
         );
-        balances[msg.sender] = balances[msg.sender].add(amount);
+        balances[flashLoanContract] = balances[flashLoanContract].add(amount);
         FlashLoanReceiver(flashLoanContract).execute();
-        balances[msg.sender] = balances[msg.sender].sub(amount, "BEHODLER: Flashloan repayment failed");
+        balances[flashLoanContract] = balances[flashLoanContract].sub(amount, "BEHODLER: Flashloan repayment failed");
     }
 
     function burn(address token, uint256 amount)

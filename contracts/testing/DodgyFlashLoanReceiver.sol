@@ -3,7 +3,7 @@ pragma solidity ^0.7.1;
 import "../flashLoans/FlashLoanReceiver.sol";
 
 interface IERC20{
-    function transferFrom (address sender, address receiver, uint value) external returns (bool);
+    function transfer (address sender, uint value) external returns (bool);
 }
 
  contract DodgyFlashLoanReceiver is FlashLoanReceiver {
@@ -14,6 +14,6 @@ interface IERC20{
         sender =recipient;
     }
     function execute () public override {
-        IERC20(scx).transferFrom(sender,address(this),1);
+        IERC20(scx).transfer(sender,1);
     }
 }
