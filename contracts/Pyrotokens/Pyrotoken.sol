@@ -125,8 +125,10 @@ contract Pyrotoken is IERC20 {
         address recipient,
         uint256 amount
     ) internal returns (bool) {
-        balances[recipient] = balances[recipient].add(amount);
+        uint burnFee = amount.div(1000);
+        balances[recipient] = balances[recipient].add(amount-burnFee);
         balances[sender] = balances[sender].sub(amount);
+        _totalSupply = _totalSupply.sub(burnFee);
         emit Transfer(sender, recipient, amount);
     }
 
