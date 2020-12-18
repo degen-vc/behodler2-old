@@ -1,5 +1,5 @@
 const { accounts, contract } = require('@openzeppelin/test-environment');
-const { expectEvent, expectRevert, ether } = require('@openzeppelin/test-helpers');
+const { expectEvent, expectRevert, ether, balance } = require('@openzeppelin/test-helpers');
 const { expect, assert } = require('chai');
 const { BNtoBigInt } = require('./helpers/BigIntUtil');
 const bigNum = require('./helpers/BigIntUtil')
@@ -41,8 +41,8 @@ describe('Behodler1', async function () {
         this.invalidToken = await MockToken1.new({ from: owner })
         this.flashLoanArbiter = await OpenArbiter.new({ from: owner })
         this.lachesis = await Lachesis.new({ from: owner })
-        await this.regularToken.mint(trader1, 2n * TEN)
-        await this.burnableToken.mint(trader1, 2n * TEN)
+        await this.regularToken.mint(trader1, 2000000n * TEN)
+        await this.burnableToken.mint(trader1, 2000000n * TEN)
         await this.invalidToken.mint(trader1, TEN)
 
         await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
@@ -56,104 +56,111 @@ describe('Behodler1', async function () {
     })
 
     it('adding burnable token as liquidity in 2 batches generates the correct volume of Scarcity', async function () {
-        // //ADD 1 FINNEY WHEN BEHODLER BALANCE OF TOKEN ZERO
-        const originalBalance = 2n * TEN
-        const expectedBalanceAfter = originalBalance - FINNEY
+        //ADD 1 FINNEY WHEN BEHODLER BALANCE OF TOKEN ZERO
+        const originalBalance = 2000000n * TEN
+        const expectedBalanceAfter = originalBalance - FINNEY * 2n
 
         const scarcitySupplyBefore = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
         expect(scarcitySupplyBefore).to.equal(0n)
 
         await this.burnableToken.approve(this.behodler.address, originalBalance, { from: trader1 })
-        await this.behodler.addLiquidity(this.burnableToken.address, FINNEY, 0, 31622776, 31224989, { from: trader1 })
-
+        await this.behodler.addLiquidity(this.burnableToken.address, FINNEY * 2n, { from: trader1 })
         const tokenBalanceOfUser = await bigNum.BNtoBigInt(this.burnableToken.balanceOf.call(trader1))
-        expect(tokenBalanceOfUser).to.equal(expectedBalanceAfter) //locking
+        expect(tokenBalanceOfUser).to.equal(expectedBalanceAfter)
 
-        const scarcityBalance = await bigNum.BNtoBigInt(this.behodler.balanceOf.call(trader1))
+        const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
 
-        // (9.75x10¹⁴)x4294967296 = 134110306572959744
-        const expectedScarcity = 134110306572959744n
+        const expectedScarcity = '936954321551396916649'
         expect(scarcityBalance).to.equal(expectedScarcity)
 
-        const scarcitySupplyAfter = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
+        const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
         expect(scarcitySupplyAfter).to.equal(expectedScarcity)
 
         //ADD 20 FINNEY WHEN BEHODLER BALANCE IS 1 FINNEY
-        //EXPECTED SCARCITY: (ROOT(21 FINNEY)-ROOT(1 FINNEY))*2^32 ≈ 4.865811007×10¹⁷
 
-        await this.behodler.addLiquidity(this.burnableToken.address, 21n * FINNEY, 31224989, 148323969, 146458185, { from: trader1 })
+        await this.behodler.addLiquidity(this.burnableToken.address, 2n * FINNEY, { from: trader1 })
         //21450000000000000
-        const expectedBalanceAfterSecondAdd = expectedBalanceAfter - 21n * FINNEY
+        const expectedBalanceAfterSecondAdd = expectedBalanceAfter - 2n * FINNEY
         const tokenBalanceOfUserAfterSecondAdd = await bigNum.BNtoBigInt(this.burnableToken.balanceOf.call(trader1))
         expect(tokenBalanceOfUserAfterSecondAdd).to.equal(expectedBalanceAfterSecondAdd)
 
         const scarcityBalanceAfterSecondAdd = await bigNum.BNtoBigInt(this.behodler.balanceOf.call(trader1))
 
-        const expectedScarcityAfterSecondAdd = 629033114806517760n
-        assert.isTrue(scarcityBalanceAfterSecondAdd === expectedScarcityAfterSecondAdd, `${expectedScarcityAfterSecondAdd}; ${scarcityBalanceAfterSecondAdd}`)
+        const expectedScarcityAfterSecondAdd = '955401065625106468265'
+        assert.isTrue(scarcityBalanceAfterSecondAdd.toString() === expectedScarcityAfterSecondAdd, `${expectedScarcityAfterSecondAdd}; ${scarcityBalanceAfterSecondAdd}`)
+
+        await this.behodler.addLiquidity(this.burnableToken.address, 2n * FINNEY, { from: trader1 })
+        //21450000000000000
+        const expectedBalanceAfterThirdAdd = expectedBalanceAfterSecondAdd - 2n * FINNEY
+        const tokenBalanceOfUserAfterThirdAdd = await bigNum.BNtoBigInt(this.burnableToken.balanceOf.call(trader1))
+        expect(tokenBalanceOfUserAfterThirdAdd).to.equal(expectedBalanceAfterThirdAdd)
+
+        const scarcityBalanceAfterThirdAdd = await bigNum.BNtoBigInt(this.behodler.balanceOf.call(trader1))
+
+        const expectedScarcityAfterThirdAdd = '966191719168626775368'
+        assert.isTrue(scarcityBalanceAfterThirdAdd.toString() === expectedScarcityAfterThirdAdd, `${expectedScarcityAfterThirdAdd}; ${scarcityBalanceAfterThirdAdd}`)
     })
 
-    it('add liquidity as burnable token in 1 batch generates correct amount of Scarcity', async function () {
-        await this.burnableToken.approve(this.behodler.address, 22n * FINNEY, { from: trader1 })
-        await this.behodler.addLiquidity(this.burnableToken.address, 22n * FINNEY, 0, 148323969, 146458185, { from: trader1 })
-
-        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
-        const expectedScarcityAfter = 629033114806517760n
-        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter)
-    })
 
     it('adding liquidity as non burnable token does not burn', async function () {
-        await this.regularToken.approve(this.behodler.address, 22n * FINNEY, { from: trader1 })
-        await this.behodler.addLiquidity(this.regularToken.address, 22n * FINNEY, 0, 148323969, 146458185, { from: trader1 })
+        const originalBalance = 2000000n * TEN
+        const expectedBalanceAfter = originalBalance - FINNEY * 2n
 
-        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
-        const expectedScarcityAfter = 629033114806517760n
-        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter, `${scarcityBalanceAfter}; ${expectedScarcityAfter}`)
+        const scarcitySupplyBefore = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
+        expect(scarcitySupplyBefore).to.equal(0n)
+
+        await this.regularToken.approve(this.behodler.address, originalBalance, { from: trader1 })
+        await this.behodler.addLiquidity(this.regularToken.address, FINNEY * 2n, { from: trader1 })
+        const tokenBalanceOfUser = await bigNum.BNtoBigInt(this.regularToken.balanceOf.call(trader1))
+        expect(tokenBalanceOfUser).to.equal(expectedBalanceAfter)
+
+        const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
+
+        const expectedScarcity = '936954321551396916649'
+        expect(scarcityBalance).to.equal(expectedScarcity)
+
+        const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
+        expect(scarcitySupplyAfter).to.equal(expectedScarcity)
     })
 
     it('adding liquidity as Eth produces correct scarcity', async function () {
         const weth = await this.behodler.Weth.call()
         expect(weth).to.be.a("string").that.equals(this.weth.address)
 
-        await this.behodler.addLiquidity(weth, 22n * FINNEY, 0, 148323969, 146458185, { from: trader1, value: `${22n * FINNEY}` })
+        const ethBalanceBefore = await bigNum.BNtoBigInt(balance.current(trader1))
 
-        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
-        const expectedScarcityAfter = 629033114806517760n
-        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter, `${scarcityBalanceAfter}; ${expectedScarcityAfter}`)
+        await this.behodler.addLiquidity(weth, FINNEY * 2n, { from: trader1, value: (FINNEY * 2n).toString() })
+
+        const ethBalanceAfter = (await bigNum.BNtoBigInt(balance.current(trader1))).toString()
+
+        const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
+
+        const expectedScarcity = '936954321551396916649'
+        expect(scarcityBalance).to.equal(expectedScarcity)
+
+        const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
+        expect(scarcitySupplyAfter).to.equal(expectedScarcity)
     })
 
     it("withdrawing scarcity transfers out the correct number of tokens", async function () {
         //scarcity supply shrinks
-        //token output is less than input due to scx burning.
-        //add tokens. This should not be done via a mock. It has to be a little end-to-end
         await this.regularToken.approve(this.behodler.address, 22n * FINNEY, { from: trader1 })
-        await this.behodler.addLiquidity(this.regularToken.address, 22n * FINNEY, 0, 148323969, 146458185, { from: trader1 })
+        await this.behodler.addLiquidity(this.regularToken.address, 22n * FINNEY, { from: trader1 })
         const tokenBalanceBeforeWithdraw = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
         const scarcityBalanceBeforeWithdraw = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
 
         const scxTotalSupplyBefore = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
-
-        await this.behodler.withdrawLiquidity(this.regularToken.address, scarcityBalanceBeforeWithdraw, 146458185, 3661455, 0, { from: trader1 })
+        const behodlerBalanceOfTokensBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.behodler.address))
+        await this.behodler.withdrawLiquidity(this.regularToken.address, behodlerBalanceOfTokensBefore / 3n, { from: trader1 })
+        const behodlerBalanceOfTokensAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.behodler.address))
+        assert.equal(behodlerBalanceOfTokensAfter.toString(), ((behodlerBalanceOfTokensBefore * 2n) / 3n).toString())
 
         const scxAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
-        assert.isTrue(scxAfter === 0n)//.to.equal(0n)
+        const expectedSCXAfter = scarcityBalanceBeforeWithdraw - 10790653543520307104n;
+        expect(scxAfter.toString()).to.equal(expectedSCXAfter.toString())
 
         const scxTotalSupplyAfter = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
-        expect(scxTotalSupplyAfter).to.equal(scxTotalSupplyBefore - scarcityBalanceBeforeWithdraw)
-
-        //scx burn fee translates into burn fee squared reduction in token
-        const tokenBalanceAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
-        const balanceChange = tokenBalanceAfter - tokenBalanceBeforeWithdraw
-        const feeOnToken = 0.000625 // scx burn fee squared = (0.025)^2
-        const netTokenFactor = 0.999375 // 1-feeOnToken
-        const hundredmillion = 100000000n //adjustmentFactor
-        const expectedBalanceChange = ((2145n * 999375n * FINNEY) / hundredmillion).toString()
-        //   const expectedBalanceChange = ((2145n * FINNEY) / 100n).toString()
-        const expectedApprox = expectedBalanceChange.substring(0, 6)
-        const balanceChangeApprox = balanceChange.toString().substring(0, 6)
-
-        //fixed point errors makes this only accurate to so many decimal places
-        assert.equal(balanceChangeApprox, expectedApprox, `${balanceChangeApprox.toString()}; ${expectedApprox}`)
+        expect(scxTotalSupplyAfter.toString()).to.equal((scxTotalSupplyBefore - 10790653543520307104n).toString())
     })
 
     it('swap in burnable should swap out regular at correct exchange rate', async function () {
@@ -161,39 +168,36 @@ describe('Behodler1', async function () {
         await this.regularToken.transfer(this.behodler.address, 16n * ONE, { from: trader1 })
         await this.burnableToken.approve(this.behodler.address, 2n * TEN, { from: trader1 })
 
-        const rootOne = 1000000000n //rootI_i
-        const rootOnePointTwoOne = 1100000000n //rootI_f
+        const initialInputBalance = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(this.behodler.address))
+        const initialOutputBalance = await await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.behodler.address))
+        const inputAmount = FINNEY * 10n
+        const netInputAmount = (inputAmount * 975n) / 1000n
+        const expectedFinalInputBalance = initialInputBalance + netInputAmount
 
-        const rootSixteen = 4000000000n //rootO_i
+        //swap: initialInput*initialOutput = finalInput*finalOutput
+        let finalOutputBalance = (initialInputBalance * initialOutputBalance) / expectedFinalInputBalance
+        // if (finalOutputBalance * expectedFinalInputBalance != initialInputBalance * initialOutputBalance)
+        //     assert.fail('invariant no!')
 
-        const LHS = 31n * rootOnePointTwoOne - rootOne
+        let outputAmount = initialOutputBalance - finalOutputBalance
+        let initials = initialInputBalance * initialOutputBalance
+        let finals = expectedFinalInputBalance * finalOutputBalance
+        let residual = initials - finals
+        const precision = 1000000000000000000n
+        const inputRatio = (expectedFinalInputBalance * precision) / initialInputBalance
+        const outputRatio = (initialOutputBalance * precision) / finalOutputBalance
 
-        //√F(I_f - √I_i) = (√O_i - √O_f)/(F)
-        //adjusted for fixed point arithmetic:
-        //√F(I_f - √I_i)/√(1000) = ((√O_i - √O_f)*1000)/(F)
-        //b == 25 so F == 999.975
-        //√F = 31,√1000 = 31
-        //LHS: (rootOnePointTwoOne - rootOne)
-        //RHS((rootSixteen - root_finalO)*1000)/999
-
-        //=>(999) * (rootOnePointTwoOne - rootOne ) = (rootSixteen - root_finalO)*1000
-        //=> 999*(rootOnePointTwoOne - rootOne )/1000 = (rootSixteen - root_finalO)
-        //=>root_finalO = rootSixteen - 999*(rootOnePointTwoOne - rootOne )/1000 
-        const expected_rootO_f = rootSixteen - 975n * (rootOnePointTwoOne - rootOne) / 1000n
-        //expect to receive 0.789 of O in exchange for 0.2 Input, implying that Input is more scarce and more valuable
         const inputBalanceBefore = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
         const outputBalanceBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
 
-        await this.behodler.swap(this.burnableToken.address, this.regularToken.address, 31, rootOnePointTwoOne, rootOne, rootSixteen, expected_rootO_f, { from: trader1 });
-
+        await this.behodler.swap(this.burnableToken.address, this.regularToken.address, FINNEY * 10n, outputAmount, { from: trader1 });
         const inputBalanceAfter = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
         const outputBalanceAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
 
         const inputChange = (inputBalanceBefore - inputBalanceAfter).toString()
         const outputChange = (outputBalanceAfter - outputBalanceBefore).toString()
-
-        assert.isTrue(inputChange === '210000000000000000')
-        assert.isTrue(outputChange === '770493750000000000')
+        assert.equal(inputChange, inputAmount.toString())
+        assert.equal(outputChange, outputAmount.toString())
     })
 })
 
@@ -236,46 +240,46 @@ describe('Behodler2: Pyrotoken', async function () {
     it('adding liquidity as non burnable fills liquidity receiver which fills pyrotoken', async function () {
         this.timeout(500000);
 
-        await this.regularToken.approve(this.behodler.address, 22n * BigInt(Math.pow(10, 15)), { from: trader1 })
-        await this.behodler.addLiquidity(this.regularToken.address, "22000000000000000", 0, 148323969, 146458185, { from: trader1 })
+        const originalBalance = 2n * TEN
+        const expectedBalanceAfter = originalBalance - FINNEY * 2n
 
-        const scarcityBalanceAfter = await bigNum.BNtoBigInt(this.behodler.balanceOf(trader1))
-        const expectedScarcityAfter = 629033114806517760n
-        assert.isTrue(scarcityBalanceAfter === expectedScarcityAfter, `${scarcityBalanceAfter}; ${expectedScarcityAfter}`)
+        const scarcitySupplyBefore = await bigNum.BNtoBigInt(this.behodler.totalSupply.call())
+        expect(scarcitySupplyBefore.toString()).to.equal((0n).toString())
 
-        await this.regularToken.approve(this.pyroRegular.address, FINNEY, { from: trader1 })
+        await this.regularToken.approve(this.behodler.address, originalBalance, { from: trader1 })
+        await this.behodler.addLiquidity(this.regularToken.address, FINNEY * 2n, { from: trader1 })
+        const tokenBalanceOfUser = await bigNum.BNtoBigInt(this.regularToken.balanceOf.call(trader1))
+        expect(tokenBalanceOfUser.toString()).to.equal(expectedBalanceAfter.toString())
 
+        const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
+
+        const expectedScarcity = '936954321551396916649'
+        expect(scarcityBalance).to.equal(expectedScarcity)
+
+        const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
+        expect(scarcitySupplyAfter).to.equal(expectedScarcity)
         const balanceOfLiquidityReceiverBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.liquidityReceiver.address))
-        assert.equal(balanceOfLiquidityReceiverBefore.toString(), (BigInt(55 * Math.pow(10, 13))).toString());
+        assert.equal(balanceOfLiquidityReceiverBefore.toString(), (BigInt(5 * Math.pow(10, 13))).toString());
         const redeemRateBeforeMint = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
         assert.equal(redeemRateBeforeMint.toString(), ONE.toString())
+
+        await this.regularToken.approve(this.pyroRegular.address, FINNEY * 3n, { from: trader1 })
 
         await this.pyroRegular.mint(FINNEY, { from: trader1 })
         const pyroBalance = await bigNum.BNtoBigInt(this.pyroRegular.balanceOf(trader1))
         assert.equal(FINNEY.toString(), pyroBalance.toString())
         const redeemRateAfterMint = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
-        assert.equal(redeemRateAfterMint.toString(), (1550000000000000000n).toString())
+        assert.equal(redeemRateAfterMint.toString(), (1050000000000000000n).toString())
 
         const balanceOfLiquidityReceiverAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.liquidityReceiver.address))
         assert.equal(balanceOfLiquidityReceiverAfter.toString(), "0");
 
-
-
         const redeemRateAfter = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
-        assert.equal(redeemRateAfter.toString(), "1550000000000000000");
+        assert.equal(redeemRateAfter.toString(), "1050000000000000000");
+        await this.regularToken.approve(this.behodler.address, FINNEY * 100n, { from: trader1 })
 
         await this.pyroRegular.mint(FINNEY, { from: trader1 })
         const redeemRateAfterSecondMint = await bigNum.BNtoBigInt(this.pyroRegular.redeemRate())
-
-        const pyroBalanceAfterSecondMint =await bigNum.BNtoBigInt(this.pyroRegular.balanceOf(trader1))
-        let difference = pyroBalanceAfterSecondMint-pyroBalance;
-        assert.equal(difference.toString(),(645161290322580n).toString())
-
-        await this.pyroRegular.mint(FINNEY, { from: trader1 })
-        const pyroBalanceAfterThirdMint =await bigNum.BNtoBigInt(this.pyroRegular.balanceOf(trader1))
-        difference = pyroBalanceAfterThirdMint-pyroBalanceAfterSecondMint;
-        assert.equal(difference.toString(),(645161290322580n).toString())
-
     })
 
 })

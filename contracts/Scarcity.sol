@@ -15,7 +15,7 @@ contract Scarcity is IERC20, Ownable {
     event Mint(address sender, address recipient, uint value);
     event Burn (uint value);
 
-    mapping(address => uint256) internal balances;
+    mapping(address => uint256) internal balances; 
     mapping(address => mapping(address => uint256)) internal _allowances;
     uint256 internal _totalSupply;
     address public migrator;
@@ -117,13 +117,17 @@ contract Scarcity is IERC20, Ownable {
     }
 
     function burn(uint256 value) external returns (bool) {
-        balances[msg.sender] = balances[msg.sender].sub(
+        burn(msg.sender,value);
+        return true;
+    }
+
+    function burn(address holder, uint value) internal {
+        balances[holder] = balances[holder].sub(
             value,
             "SCARCITY: insufficient funds"
         );
         _totalSupply = _totalSupply.sub(value);
         emit Burn(value);
-        return true;
     }
 
     function mint(address recipient, uint256 value) internal {
