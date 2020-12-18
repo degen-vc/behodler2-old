@@ -76,10 +76,7 @@ describe('Behodler1', async function () {
         const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
         expect(scarcitySupplyAfter).to.equal(expectedScarcity)
 
-        //ADD 20 FINNEY WHEN BEHODLER BALANCE IS 1 FINNEY
-
         await this.behodler.addLiquidity(this.burnableToken.address, 2n * FINNEY, { from: trader1 })
-        //21450000000000000
         const expectedBalanceAfterSecondAdd = expectedBalanceAfter - 2n * FINNEY
         const tokenBalanceOfUserAfterSecondAdd = await bigNum.BNtoBigInt(this.burnableToken.balanceOf.call(trader1))
         expect(tokenBalanceOfUserAfterSecondAdd).to.equal(expectedBalanceAfterSecondAdd)
@@ -90,7 +87,6 @@ describe('Behodler1', async function () {
         assert.isTrue(scarcityBalanceAfterSecondAdd.toString() === expectedScarcityAfterSecondAdd, `${expectedScarcityAfterSecondAdd}; ${scarcityBalanceAfterSecondAdd}`)
 
         await this.behodler.addLiquidity(this.burnableToken.address, 2n * FINNEY, { from: trader1 })
-        //21450000000000000
         const expectedBalanceAfterThirdAdd = expectedBalanceAfterSecondAdd - 2n * FINNEY
         const tokenBalanceOfUserAfterThirdAdd = await bigNum.BNtoBigInt(this.burnableToken.balanceOf.call(trader1))
         expect(tokenBalanceOfUserAfterThirdAdd).to.equal(expectedBalanceAfterThirdAdd)
@@ -174,10 +170,7 @@ describe('Behodler1', async function () {
         const netInputAmount = (inputAmount * 975n) / 1000n
         const expectedFinalInputBalance = initialInputBalance + netInputAmount
 
-        //swap: initialInput*initialOutput = finalInput*finalOutput
         let finalOutputBalance = (initialInputBalance * initialOutputBalance) / expectedFinalInputBalance
-        // if (finalOutputBalance * expectedFinalInputBalance != initialInputBalance * initialOutputBalance)
-        //     assert.fail('invariant no!')
 
         let outputAmount = initialOutputBalance - finalOutputBalance
         let initials = initialInputBalance * initialOutputBalance
