@@ -13,6 +13,7 @@ const OpenArbiter = contract.fromArtifact('OpenArbiter')
 const Lachesis = contract.fromArtifact('Lachesis')
 const LiquidityReceiver = contract.fromArtifact('LiquidityReceiver')
 const PyroToken = contract.fromArtifact('Pyrotoken');
+const IndirectSwap = contract.fromArtifact('IndirectSwap')
 
 const TEN = 10000000000000000000n
 const ONE = 1000000000000000000n
@@ -31,6 +32,8 @@ describe('Behodler1', async function () {
         this.behodler = await Behodler.new({ from: owner });
 
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
+        this.indirectSwap = await IndirectSwap.new(this.behodler.address,{from:owner});
+
         this.weth = await MockWeth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
         this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
@@ -55,7 +58,7 @@ describe('Behodler1', async function () {
         await this.lachesis.updateBehodler(this.burnableToken.address, { from: owner })
     })
 
-    it('adding burnable token as liquidity in 2 batches generates the correct volume of Scarcity', async function () {
+   /* it('adding burnable token as liquidity in 2 batches generates the correct volume of Scarcity', async function () {
         //ADD 1 FINNEY WHEN BEHODLER BALANCE OF TOKEN ZERO
         const originalBalance = 2000000n * TEN
         const expectedBalanceAfter = originalBalance - FINNEY * 2n
@@ -191,9 +194,43 @@ describe('Behodler1', async function () {
         const outputChange = (outputBalanceAfter - outputBalanceBefore).toString()
         assert.equal(inputChange, inputAmount.toString())
         assert.equal(outputChange, outputAmount.toString())
+    })*/
+
+    it('fake Janus has the same effect as direct swap', async function(){
+        await this.burnableToken.transfer(this.behodler.address, ONE, { from: trader1 })
+        await this.regularToken.transfer(this.behodler.address, 16n * ONE, { from: trader1 })
+        await this.burnableToken.approve(this.indirectSwap.address, 2n * TEN, { from: trader1 })
+
+        const initialInputBalance = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(this.behodler.address))
+        const initialOutputBalance = await await bigNum.BNtoBigInt(this.regularToken.balanceOf(this.behodler.address))
+        const inputAmount = FINNEY * 10n
+        const netInputAmount = (inputAmount * 975n) / 1000n
+        const expectedFinalInputBalance = initialInputBalance + netInputAmount
+
+        let finalOutputBalance = (initialInputBalance * initialOutputBalance) / expectedFinalInputBalance
+
+        let outputAmount = initialOutputBalance - finalOutputBalance
+        let initials = initialInputBalance * initialOutputBalance
+        let finals = expectedFinalInputBalance * finalOutputBalance
+        let residual = initials - finals
+        const precision = 1000000000000000000n
+        const inputRatio = (expectedFinalInputBalance * precision) / initialInputBalance
+        const outputRatio = (initialOutputBalance * precision) / finalOutputBalance
+
+        const inputBalanceBefore = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
+        const outputBalanceBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
+
+        await this.indirectSwap.swap(this.burnableToken.address, this.regularToken.address, FINNEY * 10n, outputAmount, { from: trader1 });
+        const inputBalanceAfter = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
+        const outputBalanceAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
+
+        const inputChange = (inputBalanceBefore - inputBalanceAfter).toString()
+        const outputChange = (outputBalanceAfter - outputBalanceBefore).toString()
+        assert.equal(inputChange, inputAmount.toString())
+        assert.equal(outputChange, outputAmount.toString())
     })
 })
-
+/*
 describe('Behodler2: Pyrotoken', async function () {
     const [owner, trader1, trader2, feeDestination, weiDaiReserve] = accounts;
 
@@ -276,3 +313,4 @@ describe('Behodler2: Pyrotoken', async function () {
     })
 
 })
+*/
