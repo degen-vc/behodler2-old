@@ -6,7 +6,6 @@ const bigNum = require('./helpers/BigIntUtil')
 
 const Behodler = contract.fromArtifact('Behodler');
 const AddressBalanceCheck = contract.fromArtifact('AddressBalanceCheck');
-const CommonMath = contract.fromArtifact('CommonMath');
 const MockToken1 = contract.fromArtifact('MockToken1')
 const MockWeth = contract.fromArtifact('MockWeth')
 const OpenArbiter = contract.fromArtifact('OpenArbiter')
@@ -25,10 +24,8 @@ describe('Behodler1', async function () {
 
     beforeEach(async function () {
         const addressBalanceCheckLib = await AddressBalanceCheck.new()
-        const commonMathLib = await CommonMath.new()
         await Behodler.detectNetwork()
         await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
-        await Behodler.link('CommonMath', commonMathLib.address)
         this.behodler = await Behodler.new({ from: owner });
 
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
@@ -185,7 +182,6 @@ describe('Behodler1', async function () {
 
         const inputBalanceBefore = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
         const outputBalanceBefore = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
-
         await this.behodler.swap(this.burnableToken.address, this.regularToken.address, FINNEY * 10n, outputAmount, { from: trader1 });
         const inputBalanceAfter = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(trader1))
         const outputBalanceAfter = await bigNum.BNtoBigInt(this.regularToken.balanceOf(trader1))
@@ -236,10 +232,8 @@ describe('Behodler2: Pyrotoken', async function () {
 
     beforeEach(async function () {
         const addressBalanceCheckLib = await AddressBalanceCheck.new()
-        const commonMathLib = await CommonMath.new()
         await Behodler.detectNetwork()
         await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
-        await Behodler.link('CommonMath', commonMathLib.address)
         this.behodler = await Behodler.new({ from: owner });
 
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
