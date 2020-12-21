@@ -157,12 +157,6 @@ contract Behodler is Scarcity {
         uint256 outputValue
     );
 
-    struct TokenValues {
-        uint256 initialInputBalance;
-        uint256 amountToTransferIn;
-        uint256 amountToTransferOut;
-    }
-
     struct WeidaiTokens {
         address dai;
         address reserve;
@@ -419,7 +413,7 @@ contract Behodler is Scarcity {
     // - however, the more I reflect on this, the less keen I am due to gas and simplicity
     //example: a user must hold 10% of SCX total supply or user must hold an NFT
     //The initial arbiter will have no constraints.
-    //The flashloan system on behodler is inverted. Instead of being able to borrow any individual,
+    //The flashloan system on behodler is inverted. Instead of being able to borrow any individual token,
     //the borrower asks for SCX. Theoretically you can borrow more SCX than currently exists so long
     //as you can think of a clever way to pay it back.
     //Note: Borrower doesn't have to send scarcity back, they just need to have high enough balance.
