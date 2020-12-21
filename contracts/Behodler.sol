@@ -518,7 +518,7 @@ contract Behodler is Scarcity {
 
         if(deltaSCX>scxBalance){ //rounding errors in scx creation and destruction. Err on the side of holders
             uint difference = deltaSCX -scxBalance;
-            if((difference*1000)/scxBalance ==0)
+            if((difference*10000)/deltaSCX ==0)
                 deltaSCX = scxBalance;
         }
         burn(msg.sender,deltaSCX);

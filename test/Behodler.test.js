@@ -32,7 +32,7 @@ describe('Behodler1', async function () {
         this.behodler = await Behodler.new({ from: owner });
 
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
-        this.indirectSwap = await IndirectSwap.new(this.behodler.address,{from:owner});
+        this.indirectSwap = await IndirectSwap.new(this.behodler.address, { from: owner });
 
         this.weth = await MockWeth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
@@ -58,7 +58,7 @@ describe('Behodler1', async function () {
         await this.lachesis.updateBehodler(this.burnableToken.address, { from: owner })
     })
 
-   /* it('adding burnable token as liquidity in 2 batches generates the correct volume of Scarcity', async function () {
+    it('adding burnable token as liquidity in 2 batches generates the correct volume of Scarcity', async function () {
         //ADD 1 FINNEY WHEN BEHODLER BALANCE OF TOKEN ZERO
         const originalBalance = 2000000n * TEN
         const expectedBalanceAfter = originalBalance - FINNEY * 2n
@@ -194,9 +194,9 @@ describe('Behodler1', async function () {
         const outputChange = (outputBalanceAfter - outputBalanceBefore).toString()
         assert.equal(inputChange, inputAmount.toString())
         assert.equal(outputChange, outputAmount.toString())
-    })*/
+    })
 
-    it('fake Janus has the same effect as direct swap', async function(){
+    it('fake Janus has the same effect as direct swap', async function () {
         await this.burnableToken.transfer(this.behodler.address, ONE, { from: trader1 })
         await this.regularToken.transfer(this.behodler.address, 16n * ONE, { from: trader1 })
         await this.burnableToken.approve(this.indirectSwap.address, 2n * TEN, { from: trader1 })
@@ -230,7 +230,7 @@ describe('Behodler1', async function () {
         assert.equal(outputChange, outputAmount.toString())
     })
 })
-/*
+
 describe('Behodler2: Pyrotoken', async function () {
     const [owner, trader1, trader2, feeDestination, weiDaiReserve] = accounts;
 
@@ -313,4 +313,3 @@ describe('Behodler2: Pyrotoken', async function () {
     })
 
 })
-*/
