@@ -16,10 +16,6 @@ interface IWeth {
     function withdraw(uint256 value) external;
 }
 
-
-pragma solidity ^0.5.0 || ^0.6.0 || ^0.7.0;
-
-
 library AddressBalanceCheck {
     function tokenBalance(address token) public view returns (uint256) {
         return IERC20(token).balanceOf(address(this));
@@ -39,12 +35,6 @@ library AddressBalanceCheck {
         uint256 value
     ) public {
         IERC20(token).transfer(recipient, value);
-    }
-}
-
-library CommonMath {
-    function square(uint256 num) public pure returns (uint256) {
-        return num * num;
     }
 }
 
@@ -77,26 +67,6 @@ library CommonMath {
     return int128 (x << 64);
   }
 
-
-  function toUInt (int128 x) internal pure returns (uint64) {
-    require (x >= 0);
-    return uint64 (x >> 64);
-  }
-
-  /**
-   * Calculate x - y.  Revert on overflow.
-   *
-   * @param x signed 64.64-bit fixed point number
-   * @param y signed 64.64-bit fixed point number
-   * @return signed 64.64-bit fixed point number
-   */
-  function sub (int128 x, int128 y) internal pure returns (int128) {
-    int256 result = int256(x) - y;
-    require (result >= MIN_64x64 && result <= MAX_64x64);
-    return int128 (result);
-  }
-
-
   /**
    * Calculate x + y.  Revert on overflow.
    *
@@ -110,35 +80,6 @@ library CommonMath {
     return int128 (result);
   }
 
-  /**
-   * Calculate x^y assuming 0^0 is 1, where x is signed 64.64 fixed point number
-   * and y is unsigned 256-bit integer number.  Revert on overflow.
-   *
-   * @param x signed 64.64-bit fixed point number
-   * @param y uint256 value
-   * @return signed 64.64-bit fixed point number
-   */
-  function pow (int128 x, uint256 y) internal pure returns (int128) {
-    uint256 absoluteResult;
-    bool negativeResult = false;
-    if (x >= 0) {
-      absoluteResult = powu (uint256 (x) << 63, y);
-    } else {
-      // We rely on overflow behavior here
-      absoluteResult = powu (uint256 (uint128 (-x)) << 63, y);
-      negativeResult = y & 1 > 0;
-    }
-
-    absoluteResult >>= 63;
-
-    if (negativeResult) {
-      require (absoluteResult <= 0x80000000000000000000000000000000);
-      return -int128 (absoluteResult); // We rely on overflow behavior here
-    } else {
-      require (absoluteResult <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-      return int128 (absoluteResult); // We rely on overflow behavior here
-    }
-  }
 
   /**
    * Calculate binary logarithm of x.  Revert if x <= 0.
@@ -170,70 +111,6 @@ library CommonMath {
 
     return int128 (result);
   }
-
-   /**
-   * Calculate x^y assuming 0^0 is 1, where x is unsigned 129.127 fixed point
-   * number and y is unsigned 256-bit integer number.  Revert on overflow.
-   *
-   * @param x unsigned 129.127-bit fixed point number
-   * @param y uint256 value
-   * @return unsigned 129.127-bit fixed point number
-   */
-  function powu (uint256 x, uint256 y) private pure returns (uint256) {
-    if (y == 0) return 0x80000000000000000000000000000000;
-    else if (x == 0) return 0;
-    else {
-      int256 msb = 0;
-      uint256 xc = x;
-      if (xc >= 0x100000000000000000000000000000000) { xc >>= 128; msb += 128; }
-      if (xc >= 0x10000000000000000) { xc >>= 64; msb += 64; }
-      if (xc >= 0x100000000) { xc >>= 32; msb += 32; }
-      if (xc >= 0x10000) { xc >>= 16; msb += 16; }
-      if (xc >= 0x100) { xc >>= 8; msb += 8; }
-      if (xc >= 0x10) { xc >>= 4; msb += 4; }
-      if (xc >= 0x4) { xc >>= 2; msb += 2; }
-      if (xc >= 0x2) msb += 1;  // No need to shift xc anymore
-
-      int256 xe = msb - 127;
-      if (xe > 0) x >>= uint256 (xe);
-      else x <<= uint256 (-xe);
-
-      uint256 result = 0x80000000000000000000000000000000;
-      int256 re = 0;
-
-      while (y > 0) {
-        if (y & 1 > 0) {
-          result = result * x;
-          y -= 1;
-          re += xe;
-          if (result >=
-            0x8000000000000000000000000000000000000000000000000000000000000000) {
-            result >>= 128;
-            re += 1;
-          } else result >>= 127;
-          if (re < -127) return 0; // Underflow
-          require (re < 128); // Overflow
-        } else {
-          x = x * x;
-          y >>= 1;
-          xe <<= 1;
-          if (x >=
-            0x8000000000000000000000000000000000000000000000000000000000000000) {
-            x >>= 128;
-            xe += 1;
-          } else x >>= 127;
-          if (xe < -127) return 0; // Underflow
-          require (xe < 128); // Overflow
-        }
-      }
-
-      if (re > 0) result <<= uint256 (re);
-      else if (re < 0) result >>= uint256 (-re);
-
-      return result;
-    }
-  }
-
  }
 /*
 	Behodler orchestrates trades using an omnischedule bonding curve.
@@ -256,7 +133,6 @@ library CommonMath {
  */
 contract Behodler is Scarcity {
     using SafeMath for uint256;
-    using CommonMath for uint256;
     using ABDK for int128;
     using ABDK for uint256;
     using AddressBalanceCheck for address;
