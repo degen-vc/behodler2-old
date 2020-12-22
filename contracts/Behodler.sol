@@ -252,8 +252,7 @@ contract Behodler is Scarcity {
     However, the gradient of square root becomes untenable when
     the value of tokens diverge too much. The gradient favours the addition of low
     value tokens disportionately. A gradient that favours tokens equally is given by
-    natural log and is very well approximated by base 2 log which saves gas in computation
-    on the EVM.
+    a log. The lowest gas implementation is base 2.
     The new swap equation is thus
     log(I_f) - log(I_i) = log(O_i) - log(O_f)
 
