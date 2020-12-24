@@ -162,6 +162,7 @@ describe('Behodler1', async function () {
     it('swap in burnable should swap out regular at correct exchange rate', async function () {
         await this.burnableToken.transfer(this.behodler.address, ONE, { from: trader1 })
         await this.regularToken.transfer(this.behodler.address, 16n * ONE, { from: trader1 })
+      
         await this.burnableToken.approve(this.behodler.address, 2n * TEN, { from: trader1 })
 
         const initialInputBalance = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(this.behodler.address))
