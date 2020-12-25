@@ -174,11 +174,13 @@ contract Behodler is Scarcity {
     address pyroTokenLiquidityReceiver;
     FlashLoanArbiter public arbiter;
     address private inputSender;
-    bool unlocked = true;
+    bool[3] unlocked;
 
     constructor (){
         safetyParameters.swapPrecisionFactor = 30; //approximately a billion
         safetyParameters.maxLiquidityExit = 50;
+        for(uint8 i =0;i<3;i++)
+            unlocked[i] = true;
     }
 
     function setSafetParameters (uint8 swapPrecisionFactor, uint8 maxLiquidityExit) public onlyOwner{
@@ -235,11 +237,18 @@ contract Behodler is Scarcity {
         _;
     }
 
-    modifier lock {
-        require(unlocked, "BEHODLER: Reentrancy guard active.");
-        unlocked = false;
+    enum Slot{
+        Swap,
+        Add,
+        Withdraw
+    }
+
+    modifier lock (Slot slot) {
+        uint index = uint(slot);
+        require(unlocked[index], "BEHODLER: Reentrancy guard active.");
+        unlocked[index] = false;
         _;
-        unlocked = true;
+        unlocked[index] = true;
     }
 
     /*
@@ -270,9 +279,9 @@ contract Behodler is Scarcity {
         payable
         determineSender(inputToken)
         onlyValidToken(inputToken)
-        lock
+        lock(Slot.Swap)
         returns (bool success)
-    {
+{
        uint initialInputBalance = inputToken.tokenBalance();
         if (inputToken == Weth) {
             require(
@@ -334,7 +343,7 @@ contract Behodler is Scarcity {
         payable
         determineSender(inputToken)
         onlyValidToken(inputToken)
-        lock
+        lock(Slot.Add)
         returns (uint256 deltaSCX)
     {
         int128 initialBalance = inputToken.tokenBalance().fromUInt();
@@ -370,7 +379,7 @@ contract Behodler is Scarcity {
         payable
         determineSender(outputToken)
         onlyValidToken(outputToken)
-        lock
+        lock(Slot.Withdraw)
         returns (uint deltaSCX)
     {
         uint initialBalance =outputToken.tokenBalance();

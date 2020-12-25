@@ -18,7 +18,6 @@ const TEN = 10000000000000000000n
 const ONE = 1000000000000000000n
 const FINNEY = 1000000000000000n
 
-
 describe('Behodler1', async function () {
     const [owner, trader1, trader2, feeDestination, weiDaiReserve] = accounts;
 
@@ -240,7 +239,12 @@ describe('Behodler2: Pyrotoken', async function () {
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
         this.weth = await MockWeth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
-        this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
+        this.liquidityReceiver.registerPyroToken(this.regularToken.address, { from: owner });
+        const regularTokenAddress = this.regularToken.address;
+        const pyroTokenAddress = await this.liquidityReceiver.baseTokenMapping.call(regularTokenAddress)
+     
+        this.pyroRegular = await PyroToken.at(pyroTokenAddress)
+        // this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
 
         this.dai = await MockToken1.new({ from: owner })
         this.burnableToken = await MockToken1.new({ from: owner })

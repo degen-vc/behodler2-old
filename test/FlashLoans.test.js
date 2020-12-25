@@ -6,7 +6,6 @@ const bigNum = require('./helpers/BigIntUtil')
 
 const Behodler = contract.fromArtifact('Behodler');
 const AddressBalanceCheck = contract.fromArtifact('AddressBalanceCheck');
-const CommonMath = contract.fromArtifact('CommonMath');
 const MockToken1 = contract.fromArtifact('MockToken1')
 const MockWeth = contract.fromArtifact('MockWeth')
 const OpenArbiter = contract.fromArtifact('OpenArbiter')
@@ -26,10 +25,8 @@ describe('FlashLoans', async function () {
 
     beforeEach(async function () {
         const addressBalanceCheckLib = await AddressBalanceCheck.new()
-        const commonMathLib = await CommonMath.new()
         await Behodler.detectNetwork()
         await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
-        await Behodler.link('CommonMath', commonMathLib.address)
         this.behodler = await Behodler.new({ from: owner });
 
         this.weth = await MockWeth.new({ from: owner })
@@ -61,15 +58,18 @@ describe('FlashLoans', async function () {
     })
 
     it('borrows scx from behodler and immediately pays it back with open arbiter', async function () {
+        this.timeout(500000);
         await this.behodler.grantFlashLoan(10000, this.inertFlashLoanReceiver.address, { from: trader1 });
     })
 
     it('tries to borrow scx from rejection arbiter fails', async function () {
+        this.timeout(500000);
         await this.behodler.seed(this.weth.address, this.lachesis.address, this.rejectionArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
         await expectRevert(this.behodler.grantFlashLoan(10000, this.inertFlashLoanReceiver.address, { from: trader1 }), 'BEHODLER: cannot borrow flashloan')
     })
 
     it("doesn't have enough scx to repay flash loan fails", async function () {
+        this.timeout(500000);
         await this.behodler.approve(this.dodgyFlashLoanReceiver.address, 1000, { from: trader1 });
         await expectRevert(this.behodler.grantFlashLoan(10000, this.dodgyFlashLoanReceiver.address, { from: trader1 }), 'BEHODLER: Flashloan repayment failed')
     })
