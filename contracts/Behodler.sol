@@ -21,6 +21,14 @@ library AddressBalanceCheck {
         return IERC20(token).balanceOf(address(this));
     }
 
+    function shiftedBalance(address token, uint256 factor)
+        public
+        view
+        returns (uint256)
+    {
+        return IERC20(token).balanceOf(address(this)) / factor;
+    }
+
     function transferIn(
         address token,
         address sender,
@@ -38,80 +46,97 @@ library AddressBalanceCheck {
     }
 }
 
- /*To following code is sourced from the ABDK library for assistance in dealing with precision logarithms in Ethereum.
-    * ABDK Math 64.64 Smart Contract Library.  Copyright © 2019 by ABDK Consulting.
-    * Author: Mikhail Vladimirov <mikhail.vladimirov@gmail.com>
-    * Source: https://github.com/abdk-consulting/abdk-libraries-solidity/blob/master/ABDKMath64x64.sol#L366
-    */
- library ABDK{
-   /*
-   * Minimum value signed 64.64-bit fixed point number may have.
-   */
-  int128 private constant MIN_64x64 = -0x80000000000000000000000000000000;
+/*To following code is sourced from the ABDK library for assistance in dealing with precision logarithms in Ethereum.
+ * ABDK Math 64.64 Smart Contract Library.  Copyright © 2019 by ABDK Consulting.
+ * Author: Mikhail Vladimirov <mikhail.vladimirov@gmail.com>
+ * Source: https://github.com/abdk-consulting/abdk-libraries-solidity/blob/master/ABDKMath64x64.sol#L366
+ */
+library ABDK {
+    /*
+     * Minimum value signed 64.64-bit fixed point number may have.
+     */
+    int128 private constant MIN_64x64 = -0x80000000000000000000000000000000;
 
-  /*
-   * Maximum value signed 64.64-bit fixed point number may have.
-   */
-  int128 private constant MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    /*
+     * Maximum value signed 64.64-bit fixed point number may have.
+     */
+    int128 private constant MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
-
-  /**
-   * Convert unsigned 256-bit integer number into signed 64.64-bit fixed point
-   * number.  Revert on overflow.
-   *
-   * @param x unsigned 256-bit integer number
-   * @return signed 64.64-bit fixed point number
-   */
-  function fromUInt (uint256 x) internal pure returns (int128) {
-    require (x <= 0x7FFFFFFFFFFFFFFF);
-    return int128 (x << 64);
-  }
-
-  /**
-   * Calculate x + y.  Revert on overflow.
-   *
-   * @param x signed 64.64-bit fixed point number
-   * @param y signed 64.64-bit fixed point number
-   * @return signed 64.64-bit fixed point number
-   */
-  function add (int128 x, int128 y) internal pure returns (int128) {
-    int256 result = int256(x) + y;
-    require (result >= MIN_64x64 && result <= MAX_64x64);
-    return int128 (result);
-  }
-
-
-  /**
-   * Calculate binary logarithm of x.  Revert if x <= 0.
-   *
-   * @param x signed 64.64-bit fixed point number
-   * @return signed 64.64-bit fixed point number
-   */
-  function log_2 (int128 x) internal pure returns (int128) {
-    require (x > 0);
-
-    int256 msb = 0;
-    int256 xc = x;
-    if (xc >= 0x10000000000000000) { xc >>= 64; msb += 64; }
-    if (xc >= 0x100000000) { xc >>= 32; msb += 32; }
-    if (xc >= 0x10000) { xc >>= 16; msb += 16; }
-    if (xc >= 0x100) { xc >>= 8; msb += 8; }
-    if (xc >= 0x10) { xc >>= 4; msb += 4; }
-    if (xc >= 0x4) { xc >>= 2; msb += 2; }
-    if (xc >= 0x2) msb += 1;  // No need to shift xc anymore
-
-    int256 result = msb - 64 << 64;
-    uint256 ux = uint256 (x) << uint256 (127 - msb);
-    for (int256 bit = 0x8000000000000000; bit > 0; bit >>= 1) {
-      ux *= ux;
-      uint256 b = ux >> 255;
-      ux >>= 127 + b;
-      result += bit * int256 (b);
+    /**
+     * Convert unsigned 256-bit integer number into signed 64.64-bit fixed point
+     * number.  Revert on overflow.
+     *
+     * @param x unsigned 256-bit integer number
+     * @return signed 64.64-bit fixed point number
+     */
+    function fromUInt(uint256 x) internal pure returns (int128) {
+        require(x <= 0x7FFFFFFFFFFFFFFF);
+        return int128(x << 64);
     }
 
-    return int128 (result);
-  }
- }
+    /**
+     * Calculate x + y.  Revert on overflow.
+     *
+     * @param x signed 64.64-bit fixed point number
+     * @param y signed 64.64-bit fixed point number
+     * @return signed 64.64-bit fixed point number
+     */
+    function add(int128 x, int128 y) internal pure returns (int128) {
+        int256 result = int256(x) + y;
+        require(result >= MIN_64x64 && result <= MAX_64x64);
+        return int128(result);
+    }
+
+    /**
+     * Calculate binary logarithm of x.  Revert if x <= 0.
+     *
+     * @param x signed 64.64-bit fixed point number
+     * @return signed 64.64-bit fixed point number
+     */
+    function log_2(uint256 x) internal pure returns (uint256) {
+        require(x > 0);
+
+        uint256 msb = 0;
+        uint256 xc = x;
+        if (xc >= 0x10000000000000000) {
+            xc >>= 64;
+            msb += 64;
+        }
+        if (xc >= 0x100000000) {
+            xc >>= 32;
+            msb += 32;
+        }
+        if (xc >= 0x10000) {
+            xc >>= 16;
+            msb += 16;
+        }
+        if (xc >= 0x100) {
+            xc >>= 8;
+            msb += 8;
+        }
+        if (xc >= 0x10) {
+            xc >>= 4;
+            msb += 4;
+        }
+        if (xc >= 0x4) {
+            xc >>= 2;
+            msb += 2;
+        }
+        if (xc >= 0x2) msb += 1; // No need to shift xc anymore
+
+        uint256 result = (msb - 64) << 64;
+        uint256 ux = uint256(x) << uint256(127 - msb);
+        for (uint256 bit = 0x8000000000000000; bit > 0; bit >>= 1) {
+            ux *= ux;
+            uint256 b = ux >> 255;
+            ux >>= 127 + b;
+            result += bit * b;
+        }
+
+        return result;
+    }
+}
+
 /*
 	Behodler orchestrates trades using an omnischedule bonding curve.
 	The name is inspired by the Beholder of D&D, a monster with multiple arms ending in eyes peering in all directions.
@@ -176,14 +201,16 @@ contract Behodler is Scarcity {
     address private inputSender;
     bool[3] unlocked;
 
-    constructor (){
+    constructor() {
         safetyParameters.swapPrecisionFactor = 30; //approximately a billion
         safetyParameters.maxLiquidityExit = 50;
-        for(uint8 i =0;i<3;i++)
-            unlocked[i] = true;
+        for (uint8 i = 0; i < 3; i++) unlocked[i] = true;
     }
 
-    function setSafetParameters (uint8 swapPrecisionFactor, uint8 maxLiquidityExit) public onlyOwner{
+    function setSafetParameters(
+        uint8 swapPrecisionFactor,
+        uint8 maxLiquidityExit
+    ) public onlyOwner {
         safetyParameters.swapPrecisionFactor = swapPrecisionFactor;
         safetyParameters.maxLiquidityExit = maxLiquidityExit;
     }
@@ -204,9 +231,8 @@ contract Behodler is Scarcity {
         WD.dai = dai;
     }
 
-    //MIN_LIQUIDITY is mainly for fixed point rounding errors. Infinitesimal tokens are rejected.
-    //Keep in mind a typical ERC20 has 59 bits after the point. Bitcoin has 26.
-    uint256 public constant MIN_LIQUIDITY = 1 << 17;
+    //Logarithmic growth can get quite flat beyond the first chunk. We divide input amounts by
+    uint256 public constant MIN_LIQUIDITY = 1e12;
 
     mapping(address => bool) public tokenBurnable;
     mapping(address => bool) public validTokens;
@@ -237,14 +263,10 @@ contract Behodler is Scarcity {
         _;
     }
 
-    enum Slot{
-        Swap,
-        Add,
-        Withdraw
-    }
+    enum Slot {Swap, Add, Withdraw}
 
-    modifier lock (Slot slot) {
-        uint index = uint(slot);
+    modifier lock(Slot slot) {
+        uint256 index = uint256(slot);
         require(unlocked[index], "BEHODLER: Reentrancy guard active.");
         unlocked[index] = false;
         _;
@@ -281,8 +303,8 @@ contract Behodler is Scarcity {
         onlyValidToken(inputToken)
         lock(Slot.Swap)
         returns (bool success)
-{
-       uint initialInputBalance = inputToken.tokenBalance();
+    {
+        uint256 initialInputBalance = inputToken.tokenBalance();
         if (inputToken == Weth) {
             require(
                 msg.value == inputAmount,
@@ -293,24 +315,37 @@ contract Behodler is Scarcity {
             inputToken.transferIn(inputSender, inputAmount);
         }
 
-        uint256 netInputAmount = inputAmount - burnToken(inputToken, inputAmount);
-        uint initialOutputBalance = outputToken.tokenBalance();
-        require(outputAmount.mul(100).div(initialOutputBalance) <= safetyParameters.maxLiquidityExit, "BEHODLER: liquidity withdrawal too large.");
-        uint finalInputBalance = initialInputBalance.add(netInputAmount);
-        uint finalOutputBalance = initialOutputBalance.sub(outputAmount);
+        uint256 netInputAmount =
+            inputAmount.sub(burnToken(inputToken, inputAmount));
+        uint256 initialOutputBalance = outputToken.tokenBalance();
+        require(
+            outputAmount.mul(100).div(initialOutputBalance) <=
+                safetyParameters.maxLiquidityExit,
+            "BEHODLER: liquidity withdrawal too large."
+        );
+        uint256 finalInputBalance = initialInputBalance.add(netInputAmount);
+        uint256 finalOutputBalance = initialOutputBalance.sub(outputAmount);
 
         //new scope to avoid stack too deep errors.
         {
             //if the input balance after adding input liquidity is 1073741824 bigger than the initial balance, we revert.
-            uint inputRatio = (initialInputBalance << safetyParameters.swapPrecisionFactor).div(finalInputBalance);
-            uint outputRatio = (finalOutputBalance << safetyParameters.swapPrecisionFactor).div(initialOutputBalance);
+            uint256 inputRatio =
+                (initialInputBalance << safetyParameters.swapPrecisionFactor)
+                    .div(finalInputBalance);
+            uint256 outputRatio =
+                (finalOutputBalance << safetyParameters.swapPrecisionFactor)
+                    .div(initialOutputBalance);
 
-            require(inputRatio!=0 && inputRatio==outputRatio,
+            require(
+                inputRatio != 0 && inputRatio == outputRatio,
                 "BEHODLER: swap invariant."
             );
         }
 
-        require(finalOutputBalance>=MIN_LIQUIDITY, "BEHODLER: min liquidity.");
+        require(
+            finalOutputBalance >= MIN_LIQUIDITY,
+            "BEHODLER: min liquidity."
+        );
 
         if (outputToken == Weth) {
             IWeth(Weth).withdraw(outputAmount);
@@ -346,7 +381,9 @@ contract Behodler is Scarcity {
         lock(Slot.Add)
         returns (uint256 deltaSCX)
     {
-        int128 initialBalance = inputToken.tokenBalance().fromUInt();
+
+        uint256 initialBalance =
+            uint256(inputToken.shiftedBalance(MIN_LIQUIDITY).fromUInt());
 
         if (inputToken == Weth) {
             require(msg.value == amount, "BEHODLER: Insufficient Ether sent");
@@ -354,12 +391,21 @@ contract Behodler is Scarcity {
         } else {
             inputToken.transferIn(inputSender, amount);
         }
-        int128 netInputAmount = amount.sub(burnToken(inputToken, amount)).fromUInt();
+        uint256 netInputAmount =
+            uint256(amount.sub(burnToken(inputToken, amount)).fromUInt()).div(
+                MIN_LIQUIDITY
+            );
 
-        int128 finalBalance = initialBalance.add(netInputAmount);
+        uint256 finalBalance = uint256(initialBalance.add(netInputAmount));
 
-        require(uint(finalBalance)>=MIN_LIQUIDITY, "BEHODLER: min liquidity.");
-        deltaSCX = uint(finalBalance.log_2() - (initialBalance>1?initialBalance.log_2():0));
+        require(
+            uint256(finalBalance) >= MIN_LIQUIDITY,
+            "BEHODLER: min liquidity."
+        );
+        deltaSCX = uint256(
+            finalBalance.log_2() -
+                (initialBalance > 1 ? initialBalance.log_2() : 0)
+        );
         mint(msg.sender, deltaSCX);
         emit LiquidityAdded(msg.sender, inputToken, amount, deltaSCX);
     }
@@ -374,32 +420,35 @@ contract Behodler is Scarcity {
         but from a computational point of view, base 2 is the cheapest for obvious reasons.
         "From my point of view, the Jedi are evil" - Darth Vader
      */
-    function withdrawLiquidity(address outputToken, uint tokensToRelease)
+    function withdrawLiquidity(address outputToken, uint256 tokensToRelease)
         public
         payable
         determineSender(outputToken)
         onlyValidToken(outputToken)
         lock(Slot.Withdraw)
-        returns (uint deltaSCX)
+        returns (uint256 deltaSCX)
     {
-        uint initialBalance =outputToken.tokenBalance();
-        uint finalBalance = initialBalance.sub(tokensToRelease);
-        require(finalBalance>MIN_LIQUIDITY, "BEHODLER: min liquidity");
-        require(tokensToRelease.mul(100).div(initialBalance) <= safetyParameters.maxLiquidityExit,"BEHODLER: liquidity withdrawal too large.");
+        uint256 initialBalance = outputToken.tokenBalance();
+        uint256 finalBalance = initialBalance.sub(tokensToRelease);
+        require(finalBalance > MIN_LIQUIDITY, "BEHODLER: min liquidity");
+        require(
+            tokensToRelease.mul(100).div(initialBalance) <=
+                safetyParameters.maxLiquidityExit,
+            "BEHODLER: liquidity withdrawal too large."
+        );
 
-        int128 logInitial = int128(initialBalance).log_2();
-        int128 logFinal = int128(finalBalance).log_2();
+        uint256 logInitial = initialBalance.log_2();
+        uint256 logFinal = finalBalance.log_2();
 
-        
-        deltaSCX = uint(logInitial - (finalBalance>1?logFinal:0));
-        uint scxBalance = balances[msg.sender];
+        deltaSCX = uint256(logInitial - (finalBalance > 1 ? logFinal : 0));
+        uint256 scxBalance = balances[msg.sender];
 
-        if(deltaSCX>scxBalance){ //rounding errors in scx creation and destruction. Err on the side of holders
-            uint difference = deltaSCX -scxBalance;
-            if((difference*10000)/deltaSCX ==0)
-                deltaSCX = scxBalance;
+        if (deltaSCX > scxBalance) {
+            //rounding errors in scx creation and destruction. Err on the side of holders
+            uint256 difference = deltaSCX - scxBalance;
+            if ((difference * 10000) / deltaSCX == 0) deltaSCX = scxBalance;
         }
-        burn(msg.sender,deltaSCX);
+        burn(msg.sender, deltaSCX);
 
         if (outputToken == Weth) {
             IWeth(Weth).withdraw(tokensToRelease);
@@ -415,6 +464,10 @@ contract Behodler is Scarcity {
             tokensToRelease,
             deltaSCX
         );
+    }
+
+    function fixedPointLOG2(uint256 amount) external pure returns (uint256) {
+        return uint256(amount.fromUInt()).log_2();
     }
 
     //TODO: possibly comply with the flash loan standard https://eips.ethereum.org/EIPS/eip-3156
@@ -444,12 +497,11 @@ contract Behodler is Scarcity {
     {
         if (tokenBurnable[token]) burnt = burnFee(token, amount);
         else if (token == WD.dai) {
-            uint256 fee = config.burnFee.mul(amount).div(1000);
-            token.transferOut(WD.reserve, fee);
+            burnt = config.burnFee.mul(amount).div(1000);
+            token.transferOut(WD.reserve, burnt);
         } else {
-            uint256 fee = config.burnFee.mul(amount).div(1000);
-            token.transferOut(pyroTokenLiquidityReceiver, fee);
-            return fee;
+            burnt = config.burnFee.mul(amount).div(1000);
+            token.transferOut(pyroTokenLiquidityReceiver, burnt);
         }
     }
 

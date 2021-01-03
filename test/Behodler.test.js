@@ -69,7 +69,7 @@ describe('Behodler1', async function () {
 
         const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
 
-        const expectedScarcity = '936954321551396916649'
+        const expectedScarcity = '201609232779564367355'
         expect(scarcityBalance).to.equal(expectedScarcity)
 
         const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
@@ -82,8 +82,8 @@ describe('Behodler1', async function () {
 
         const scarcityBalanceAfterSecondAdd = await bigNum.BNtoBigInt(this.behodler.balanceOf.call(trader1))
 
-        const expectedScarcityAfterSecondAdd = '955401065625106468265'
-        assert.isTrue(scarcityBalanceAfterSecondAdd.toString() === expectedScarcityAfterSecondAdd, `${expectedScarcityAfterSecondAdd}; ${scarcityBalanceAfterSecondAdd}`)
+        const expectedScarcityAfterSecondAdd = '220055976853273918971'
+        assert.equal(scarcityBalanceAfterSecondAdd.toString(),expectedScarcityAfterSecondAdd)
 
         await this.behodler.addLiquidity(this.burnableToken.address, 2n * FINNEY, { from: trader1 })
         const expectedBalanceAfterThirdAdd = expectedBalanceAfterSecondAdd - 2n * FINNEY
@@ -92,10 +92,9 @@ describe('Behodler1', async function () {
 
         const scarcityBalanceAfterThirdAdd = await bigNum.BNtoBigInt(this.behodler.balanceOf.call(trader1))
 
-        const expectedScarcityAfterThirdAdd = '966191719168626775368'
+        const expectedScarcityAfterThirdAdd = '230846630396794226075'
         assert.isTrue(scarcityBalanceAfterThirdAdd.toString() === expectedScarcityAfterThirdAdd, `${expectedScarcityAfterThirdAdd}; ${scarcityBalanceAfterThirdAdd}`)
     })
-
 
     it('adding liquidity as non burnable token does not burn', async function () {
         const originalBalance = 2000000n * TEN
@@ -111,7 +110,7 @@ describe('Behodler1', async function () {
 
         const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
 
-        const expectedScarcity = '936954321551396916649'
+        const expectedScarcity = '201609232779564367355'
         expect(scarcityBalance).to.equal(expectedScarcity)
 
         const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
@@ -130,7 +129,7 @@ describe('Behodler1', async function () {
 
         const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
 
-        const expectedScarcity = '936954321551396916649'
+        const expectedScarcity = '201609232779564367355'
         expect(scarcityBalance).to.equal(expectedScarcity)
 
         const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
@@ -161,7 +160,7 @@ describe('Behodler1', async function () {
     it('swap in burnable should swap out regular at correct exchange rate', async function () {
         await this.burnableToken.transfer(this.behodler.address, ONE, { from: trader1 })
         await this.regularToken.transfer(this.behodler.address, 16n * ONE, { from: trader1 })
-      
+
         await this.burnableToken.approve(this.behodler.address, 2n * TEN, { from: trader1 })
 
         const initialInputBalance = await bigNum.BNtoBigInt(this.burnableToken.balanceOf(this.behodler.address))
@@ -225,6 +224,7 @@ describe('Behodler1', async function () {
         assert.equal(inputChange, inputAmount.toString())
         assert.equal(outputChange, outputAmount.toString())
     })
+
 })
 
 describe('Behodler2: Pyrotoken', async function () {
@@ -242,7 +242,7 @@ describe('Behodler2: Pyrotoken', async function () {
         this.liquidityReceiver.registerPyroToken(this.regularToken.address, { from: owner });
         const regularTokenAddress = this.regularToken.address;
         const pyroTokenAddress = await this.liquidityReceiver.baseTokenMapping.call(regularTokenAddress)
-     
+
         this.pyroRegular = await PyroToken.at(pyroTokenAddress)
         // this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
 
@@ -282,7 +282,7 @@ describe('Behodler2: Pyrotoken', async function () {
 
         const scarcityBalance = (await this.behodler.balanceOf.call(trader1)).toString()
 
-        const expectedScarcity = '936954321551396916649'
+        const expectedScarcity = '201609232779564367355'
         expect(scarcityBalance).to.equal(expectedScarcity)
 
         const scarcitySupplyAfter = (await bigNum.BNtoBigInt(this.behodler.totalSupply.call())).toString()
