@@ -203,7 +203,7 @@ contract Behodler is Scarcity {
 
     constructor() {
         safetyParameters.swapPrecisionFactor = 30; //approximately a billion
-        safetyParameters.maxLiquidityExit = 50;
+        safetyParameters.maxLiquidityExit = 90;
         for (uint8 i = 0; i < 3; i++) unlocked[i] = true;
     }
 
@@ -381,7 +381,6 @@ contract Behodler is Scarcity {
         lock(Slot.Add)
         returns (uint256 deltaSCX)
     {
-
         uint256 initialBalance =
             uint256(inputToken.shiftedBalance(MIN_LIQUIDITY).fromUInt());
 
@@ -392,8 +391,11 @@ contract Behodler is Scarcity {
             inputToken.transferIn(inputSender, amount);
         }
         uint256 netInputAmount =
-            uint256(amount.sub(burnToken(inputToken, amount)).fromUInt()).div(
-                MIN_LIQUIDITY
+            uint256(
+                amount
+                    .sub(burnToken(inputToken, amount))
+                    .div(MIN_LIQUIDITY)
+                    .fromUInt()
             );
 
         uint256 finalBalance = uint256(initialBalance.add(netInputAmount));
@@ -440,7 +442,7 @@ contract Behodler is Scarcity {
         uint256 logInitial = initialBalance.log_2();
         uint256 logFinal = finalBalance.log_2();
 
-        deltaSCX = uint256(logInitial - (finalBalance > 1 ? logFinal : 0));
+        deltaSCX = logInitial - (finalBalance > 1 ? logFinal : 0);
         uint256 scxBalance = balances[msg.sender];
 
         if (deltaSCX > scxBalance) {
@@ -465,9 +467,52 @@ contract Behodler is Scarcity {
             deltaSCX
         );
     }
+    /*
+        ΔSCX =  log(InitialBalance) - log(FinalBalance)
+        tokensToRelease = InitialBalance -FinalBalance
+        =>FinalBalance =  InitialBalance - tokensToRelease
+        Then apply logs and deduct SCX from msg.sender
 
-    function fixedPointLOG2(uint256 amount) external pure returns (uint256) {
-        return uint256(amount.fromUInt()).log_2();
+        The choice of base for the log isn't relevant from a mathematical point of view
+        but from a computational point of view, base 2 is the cheapest for obvious reasons.
+        "From my point of view, the Jedi are evil" - Darth Vader
+     */
+    function withdrawLiquidityFindSCX(
+        address outputToken,
+        uint256 tokensToRelease,
+        uint256 scx,
+        uint256 passes
+    ) public view returns (uint256) {
+        uint256 upperBoundary = outputToken.tokenBalance();
+        uint256 lowerBoundary = 0;
+
+        for (uint256 i = 0; i < passes; i++) {
+            uint256 initialBalance = outputToken.tokenBalance();
+            uint256 finalBalance = initialBalance.sub(tokensToRelease);
+
+            uint256 logInitial = initialBalance.log_2();
+            uint256 logFinal = finalBalance.log_2();
+
+            int256 deltaSCX =
+                int256(logInitial - (finalBalance > 1 ? logFinal : 0));
+            int256 difference = int256(scx) - deltaSCX;
+            // if (difference**2 < 1000000) return tokensToRelease;
+            if (difference == 0) return tokensToRelease;
+            if (difference < 0) {
+                // too many tokens requested
+                upperBoundary = tokensToRelease - 1;
+            } else {
+                //too few tokens requested
+                lowerBoundary = tokensToRelease + 1;
+            }
+            tokensToRelease =
+                ((upperBoundary - lowerBoundary) / 2) +
+                lowerBoundary; //bitshift
+            tokensToRelease = tokensToRelease > initialBalance
+                ? initialBalance
+                : tokensToRelease;
+        }
+        return tokensToRelease;
     }
 
     //TODO: possibly comply with the flash loan standard https://eips.ethereum.org/EIPS/eip-3156
