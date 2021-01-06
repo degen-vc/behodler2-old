@@ -215,6 +215,10 @@ contract Behodler is Scarcity {
         safetyParameters.maxLiquidityExit = maxLiquidityExit;
     }
 
+    function getSafetyParameters() external view returns (uint8,uint8) {
+        return (safetyParameters.swapPrecisionFactor,safetyParameters.maxLiquidityExit);
+    }
+
     function seed(
         address weth,
         address lachesis,
