@@ -215,8 +215,8 @@ contract Behodler is Scarcity {
         safetyParameters.maxLiquidityExit = maxLiquidityExit;
     }
 
-    function getSafetyParameters() external view returns (uint8,uint8) {
-        return (safetyParameters.swapPrecisionFactor,safetyParameters.maxLiquidityExit);
+    function getMaxLiquidityExit() public view returns (uint8) {
+        return safetyParameters.maxLiquidityExit;
     }
 
     function seed(
@@ -471,6 +471,7 @@ contract Behodler is Scarcity {
             deltaSCX
         );
     }
+
     /*
         ΔSCX =  log(InitialBalance) - log(FinalBalance)
         tokensToRelease = InitialBalance -FinalBalance

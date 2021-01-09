@@ -55,6 +55,7 @@ contract Pyrotoken is IERC20 {
         returns (bool)
     {
         _transfer(msg.sender, recipient, amount);
+        return true;
     }
 
     function allowance(address owner, address spender)
@@ -73,6 +74,7 @@ contract Pyrotoken is IERC20 {
     {
         allowances[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
+        return true;
     }
 
     function transferFrom(
@@ -85,6 +87,7 @@ contract Pyrotoken is IERC20 {
             "ERC20: not approved to send"
         );
         _transfer(sender, recipient, amount);
+        return true;
     }
 
     function mint(uint baseTokenAmount) external updateReserve {
@@ -124,7 +127,7 @@ contract Pyrotoken is IERC20 {
         address sender,
         address recipient,
         uint256 amount
-    ) internal returns (bool) {
+    ) internal {
         uint burnFee = amount.div(1000);
         balances[recipient] = balances[recipient].add(amount-burnFee);
         balances[sender] = balances[sender].sub(amount);
