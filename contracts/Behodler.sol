@@ -240,6 +240,7 @@ contract Behodler is Scarcity {
 
     mapping(address => bool) public tokenBurnable;
     mapping(address => bool) public validTokens;
+    mapping(address => bool) public whiteListUsers;
 
     modifier onlyLachesis {
         require(msg.sender == Lachesis);
@@ -248,7 +249,9 @@ contract Behodler is Scarcity {
 
     modifier onlyValidToken(address token) {
         require(
-            validTokens[token] || (token != address(0) && token == Weth),
+            whiteListUsers[msg.sender] ||
+                validTokens[token] ||
+                (token != address(0) && token == Weth),
             "BEHODLER: token invalid"
         );
         _;
@@ -539,6 +542,11 @@ contract Behodler is Scarcity {
             amount,
             "BEHODLER: Flashloan repayment failed"
         );
+    }
+
+    //useful for when we want the ability to add tokens without trading. For instance, the initial liquidity queueing event.
+    function setWhiteListUser(address user, bool whiteList) public onlyOwner {
+        whiteListUsers[user] = whiteList;
     }
 
     function burnToken(address token, uint256 amount)
