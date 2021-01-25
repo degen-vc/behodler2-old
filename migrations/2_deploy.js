@@ -4,6 +4,9 @@ const Behodler = artifacts.require('Behodler')
 const LiquidityReceiver = artifacts.require('LiquidityReceiver')
 const AddressBalanceCheck = artifacts.require('AddressBalanceCheck')
 const ABDK = artifacts.require('ABDK')
+const redis = requre('redis')
+const client = redis.createClient();
+client.on('error', console.log)
 
 const fs = require('fs')
 module.exports = async function (deployer, network, accounts) {
@@ -39,14 +42,16 @@ module.exports = async function (deployer, network, accounts) {
         liquidityReceiverInstance.address,
         weiDaiStuff.inertReserve,
         weiDaiStuff.dai)
+        client.set('behodler2',behodlerInstance.address)
+        client.set('lachesis2',lachesisInstance.address)
+        client.quit()
+    // for (let i = 0; i < tokens.length; i++) {
+    //     await lachesisInstance.measure(tokens[i], true, false)
+    //     await lachesisInstance.updateBehodler(tokens[i])
+    // }
 
-    for (let i = 0; i < tokens.length; i++) {
-        await lachesisInstance.measure(tokens[i], true, false)
-        await lachesisInstance.updateBehodler(tokens[i])
-    }
-
-    await lachesisInstance.measure(weiDaiStuff['weiDai'], true, false)
-    await lachesisInstance.updateBehodler(weiDaiStuff['weiDai'])
+    // await lachesisInstance.measure(weiDaiStuff['weiDai'], true, false)
+    // await lachesisInstance.updateBehodler(weiDaiStuff['weiDai'])
     console.log('BEHODLER 2 MIGRATION COMPLETE')
 }
 

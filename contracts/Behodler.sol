@@ -240,7 +240,7 @@ contract Behodler is Scarcity {
 
     mapping(address => bool) public tokenBurnable;
     mapping(address => bool) public validTokens;
-    mapping(address => bool) public whiteListUsers;
+    mapping(address => bool) public whiteListUsers; // can trade on tokens that are disabled
 
     modifier onlyLachesis {
         require(msg.sender == Lachesis);
