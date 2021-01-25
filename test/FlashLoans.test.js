@@ -14,6 +14,7 @@ const Lachesis = contract.fromArtifact('Lachesis')
 const InertFlashLoanReceiver = contract.fromArtifact('InertFlashLoanReceiver')
 const LiquidityReceiver = contract.fromArtifact('LiquidityReceiver')
 const DodgyFlashLoanReceiver = contract.fromArtifact('DodgyFlashLoanReceiver')
+const MockSwapFactory = contract.fromArtifact('MockSwapFactory')
 
 const TEN = 10000000000000000000n
 const ONE = 1000000000000000000n
@@ -24,6 +25,9 @@ describe('FlashLoans', async function () {
     const [owner, trader1, trader2, feeDestination, weiDaiReserve] = accounts;
 
     beforeEach(async function () {
+        this.uniswap = await MockSwapFactory.new()
+        this.sushiswap = await MockSwapFactory.new()
+
         const addressBalanceCheckLib = await AddressBalanceCheck.new()
         await Behodler.detectNetwork()
         await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
@@ -38,7 +42,7 @@ describe('FlashLoans', async function () {
         this.invalidToken = await MockToken1.new({ from: owner })
         this.openArbiter = await OpenArbiter.new({ from: owner })
         this.rejectionArbiter = await RejectionArbiter.new({ from: owner })
-        this.lachesis = await Lachesis.new({ from: owner })
+        this.lachesis = await Lachesis.new(this.uniswap.address,this.sushiswap.address,{ from: owner })
         this.inertFlashLoanReceiver = await InertFlashLoanReceiver.new({ from: owner })
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
         this.dodgyFlashLoanReceiver = await DodgyFlashLoanReceiver.new(this.behodler.address, trader1, { from: owner });

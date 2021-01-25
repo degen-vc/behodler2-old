@@ -3,18 +3,14 @@ pragma solidity ^0.7.1;
 import "./FlashLoanArbiter.sol";
 import "../openzeppelin/Ownable.sol";
 import "../openzeppelin/SafeMath.sol";
-
-interface ERC20{
-    function balanceOf(address holder) external view returns (uint);
-    function totalSupply() external view returns (uint);
-}
+import "../openzeppelin/IERC20.sol";
 
 contract TokenHODLFlashLoanArbiter is FlashLoanArbiter,Ownable {
      using SafeMath for uint;
-     ERC20 token;
+     IERC20 token;
      uint holdRatio; //0-100
      function setToken (address tkn) public onlyOwner {
-         token = ERC20(tkn);
+         token = IERC20(tkn);
      }
 
      function setHoldRatio(uint ratio) public onlyOwner {

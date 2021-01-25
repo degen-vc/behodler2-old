@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.1;
 import "../flashLoans/FlashLoanReceiver.sol";
-
-interface IERC20{
-    function transfer (address sender, uint value) external returns (bool);
-}
+import "../openzeppelin/IERC20.sol";
 
  contract DodgyFlashLoanReceiver is FlashLoanReceiver {
     address scx;
