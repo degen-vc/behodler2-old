@@ -12,10 +12,10 @@ import "./facades/Burnable.sol";
  */
 contract Scarcity is IERC20, Ownable {
     using SafeMath for uint256;
-    event Mint(address sender, address recipient, uint value);
-    event Burn (uint value);
+    event Mint(address sender, address recipient, uint256 value);
+    event Burn(uint256 value);
 
-    mapping(address => uint256) internal balances; 
+    mapping(address => uint256) internal balances;
     mapping(address => mapping(address => uint256)) internal _allowances;
     uint256 internal _totalSupply;
     address public migrator;
@@ -29,8 +29,8 @@ contract Scarcity is IERC20, Ownable {
     BurnConfig public config;
 
     function configureScarcity(
-        uint transferFee,
-        uint burnFee,
+        uint256 transferFee,
+        uint256 burnFee,
         address feeDestination
     ) public onlyOwner {
         require(config.transferFee + config.burnFee < 1000);
@@ -39,11 +39,19 @@ contract Scarcity is IERC20, Ownable {
         config.feeDestination = feeDestination;
     }
 
-    function getConfiguration() public view returns (uint,uint,address)  {
-        return (config.transferFee,config.burnFee,config.feeDestination);
+    function getConfiguration()
+        public
+        view
+        returns (
+            uint256,
+            uint256,
+            address
+        )
+    {
+        return (config.transferFee, config.burnFee, config.feeDestination);
     }
 
-    function setMigrator (address m) public onlyOwner {
+    function setMigrator(address m) public onlyOwner {
         migrator = m;
     }
 
@@ -59,14 +67,14 @@ contract Scarcity is IERC20, Ownable {
         return 18;
     }
 
-    function totalSupply() external override view returns (uint256) {
+    function totalSupply() external view override returns (uint256) {
         return _totalSupply;
     }
 
     function balanceOf(address account)
         external
-        override
         view
+        override
         returns (uint256)
     {
         return balances[account];
@@ -83,8 +91,8 @@ contract Scarcity is IERC20, Ownable {
 
     function allowance(address owner, address spender)
         external
-        override
         view
+        override
         returns (uint256)
     {
         return _allowances[owner][spender];
@@ -117,11 +125,11 @@ contract Scarcity is IERC20, Ownable {
     }
 
     function burn(uint256 value) external returns (bool) {
-        burn(msg.sender,value);
+        burn(msg.sender, value);
         return true;
     }
 
-    function burn(address holder, uint value) internal {
+    function burn(address holder, uint256 value) internal {
         balances[holder] = balances[holder].sub(
             value,
             "SCARCITY: insufficient funds"
@@ -136,8 +144,8 @@ contract Scarcity is IERC20, Ownable {
         emit Mint(msg.sender, recipient, value);
     }
 
-    function migrateMint(address recipient, uint value) public {
-        require(msg.sender == migrator,"SCARCITY: Migration contract only");
+    function migrateMint(address recipient, uint256 value) public {
+        require(msg.sender == migrator, "SCARCITY: Migration contract only");
         mint(recipient, value);
     }
 
@@ -169,7 +177,7 @@ contract Scarcity is IERC20, Ownable {
         );
 
         uint256 feeComponent = config.transferFee.mul(amount).div(1000);
-        uint burnComponent = config.burnFee.mul(amount).div(1000);
+        uint256 burnComponent = config.burnFee.mul(amount).div(1000);
         _totalSupply = _totalSupply.sub(burnComponent);
         emit Burn(burnComponent);
 
@@ -188,9 +196,18 @@ contract Scarcity is IERC20, Ownable {
         emit Transfer(sender, recipient, amount);
     }
 
-    function burnFee(address token, uint amount) internal returns (uint) {
+    function applyBurnFee(address token, uint256 amount,bool proxyBurn)
+        internal
+        returns (uint256)
+    {
         uint256 burnAmount = config.burnFee.mul(amount).div(1000);
-        Burnable(token).burn(burnAmount);
+        Burnable bToken = Burnable(token);
+        if (proxyBurn) {
+            bToken.burn(address(this), burnAmount);
+        } else {
+            bToken.burn(burnAmount);
+        }
+
         return burnAmount;
     }
 }

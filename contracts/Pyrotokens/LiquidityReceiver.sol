@@ -3,10 +3,6 @@ pragma solidity ^0.7.1;
 import "../openzeppelin/IERC20.sol";
 import "./Pyrotoken.sol";
 
-abstract contract PyroTokenLike {
-    function baseToken() public virtual returns (address);
-}
-
 contract LiquidityReceiver {
     mapping(address => address) public baseTokenMapping;
 

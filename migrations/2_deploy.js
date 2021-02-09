@@ -4,7 +4,8 @@ const Behodler = artifacts.require('Behodler')
 const LiquidityReceiver = artifacts.require('LiquidityReceiver')
 const AddressBalanceCheck = artifacts.require('AddressBalanceCheck')
 const ABDK = artifacts.require('ABDK')
-const redis = requre('redis')
+const MockSwapFactory = artifacts.require('MockSwapFactory')
+const redis = require('redis')
 const client = redis.createClient();
 client.on('error', console.log)
 
@@ -12,7 +13,11 @@ const fs = require('fs')
 module.exports = async function (deployer, network, accounts) {
     var lachesisInstance, openArbiterInstance, behodlerInstance, liquidityReceiverInstance
 
-    await deployer.deploy(Lachesis)
+    await deployer.deploy(MockSwapFactory)
+    const uniswap = await MockSwapFactory.deployed()
+
+    const sushiSwap = await MockSwapFactory.new()
+    await deployer.deploy(Lachesis, uniswap.address, sushiSwap.address)
     lachesisInstance = await Lachesis.deployed();
 
     await deployer.deploy(OpenArbiter)
@@ -41,10 +46,20 @@ module.exports = async function (deployer, network, accounts) {
         openArbiterInstance.address,
         liquidityReceiverInstance.address,
         weiDaiStuff.inertReserve,
-        weiDaiStuff.dai)
-        client.set('behodler2',behodlerInstance.address)
-        client.set('lachesis2',lachesisInstance.address)
-        client.quit()
+        weiDaiStuff.dai,
+        weiDaiStuff.weiDai)
+    client.set('behodler2', behodlerInstance.address)
+    client.set('lachesis2', lachesisInstance.address)
+    client.quit()
+
+    const addresses = {
+        behodler: behodlerInstance.address,
+        lachesis: lachesisInstance.address,
+        liquidityReceiver: liquidityReceiverInstance.address
+    }
+
+    fs.writeFileSync('behodler2DevAddresses.json', JSON.stringify(addresses, null, 4), 'utf8')
+
     // for (let i = 0; i < tokens.length; i++) {
     //     await lachesisInstance.measure(tokens[i], true, false)
     //     await lachesisInstance.updateBehodler(tokens[i])

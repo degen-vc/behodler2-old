@@ -185,6 +185,7 @@ contract Behodler is Scarcity {
     struct WeidaiTokens {
         address dai;
         address reserve;
+        address weiDai;
     }
 
     struct PrecisionFactors {
@@ -225,7 +226,8 @@ contract Behodler is Scarcity {
         address flashLoanArbiter,
         address _pyroTokenLiquidityReceiver,
         address weidaiReserve,
-        address dai
+        address dai,
+        address weiDai
     ) public onlyOwner {
         Weth = weth;
         Lachesis = lachesis;
@@ -233,6 +235,7 @@ contract Behodler is Scarcity {
         pyroTokenLiquidityReceiver = _pyroTokenLiquidityReceiver;
         WD.reserve = weidaiReserve;
         WD.dai = dai;
+        WD.weiDai = weiDai;
     }
 
     //Logarithmic growth can get quite flat beyond the first chunk. We divide input amounts by
@@ -313,11 +316,15 @@ contract Behodler is Scarcity {
     {
         uint256 initialInputBalance = inputToken.tokenBalance();
         if (inputToken == Weth) {
-            require(
-                msg.value == inputAmount,
-                "BEHODLER: Insufficient Ether sent"
-            );
-            IWeth(Weth).deposit{value: msg.value}();
+            if (IERC20(Weth).balanceOf(msg.sender) >= inputAmount) {
+                Weth.transferIn(msg.sender, inputAmount);
+            } else {
+                require(
+                    msg.value == inputAmount,
+                    "BEHODLER: Insufficient Ether sent"
+                );
+                IWeth(Weth).deposit{value: msg.value}();
+            }
         } else {
             inputToken.transferIn(inputSender, inputAmount);
         }
@@ -390,10 +397,16 @@ contract Behodler is Scarcity {
     {
         uint256 initialBalance =
             uint256(inputToken.shiftedBalance(MIN_LIQUIDITY).fromUInt());
-
         if (inputToken == Weth) {
-            require(msg.value == amount, "BEHODLER: Insufficient Ether sent");
-            IWeth(Weth).deposit{value: msg.value}();
+            if (IERC20(Weth).balanceOf(msg.sender) >= amount) {
+                Weth.transferIn(msg.sender, amount);
+            } else {
+                require(
+                    msg.value == amount,
+                    "BEHODLER: Insufficient Ether sent"
+                );
+                IWeth(Weth).deposit{value: msg.value}();
+            }
         } else {
             inputToken.transferIn(inputSender, amount);
         }
@@ -406,7 +419,6 @@ contract Behodler is Scarcity {
             );
 
         uint256 finalBalance = uint256(initialBalance.add(netInputAmount));
-
         require(
             uint256(finalBalance) >= MIN_LIQUIDITY,
             "BEHODLER: min liquidity."
@@ -548,12 +560,15 @@ contract Behodler is Scarcity {
     function setWhiteListUser(address user, bool whiteList) public onlyOwner {
         whiteListUsers[user] = whiteList;
     }
-
+    
     function burnToken(address token, uint256 amount)
         private
         returns (uint256 burnt)
     {
-        if (tokenBurnable[token]) burnt = burnFee(token, amount);
+        if (token == WD.weiDai) {
+            burnt = applyBurnFee(token, amount, true);
+        } else if (tokenBurnable[token])
+            burnt = applyBurnFee(token, amount, false);
         else if (token == WD.dai) {
             burnt = config.burnFee.mul(amount).div(1000);
             token.transferOut(WD.reserve, burnt);

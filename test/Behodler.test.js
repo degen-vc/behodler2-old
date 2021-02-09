@@ -14,6 +14,7 @@ const LiquidityReceiver = contract.fromArtifact('LiquidityReceiver')
 const PyroToken = contract.fromArtifact('Pyrotoken');
 const IndirectSwap = contract.fromArtifact('IndirectSwap')
 const MockSwapFactory = contract.fromArtifact('MockSwapFactory')
+const MockWeiDai = contract.fromArtifact('MockWeiDai')
 const TEN = 10000000000000000000n
 const ONE = 1000000000000000000n
 const FINNEY = 1000000000000000n
@@ -42,12 +43,13 @@ describe('Behodler1', async function () {
         this.eye = await MockToken1.new({ from: owner })
         this.invalidToken = await MockToken1.new({ from: owner })
         this.flashLoanArbiter = await OpenArbiter.new({ from: owner })
-        this.lachesis = await Lachesis.new(this.uniswap.address,this.sushiswap.address,{ from: owner })
+        this.lachesis = await Lachesis.new(this.uniswap.address, this.sushiswap.address, { from: owner })
         await this.regularToken.mint(trader1, 2000000n * TEN)
         await this.burnableToken.mint(trader1, 2000000n * TEN)
         await this.invalidToken.mint(trader1, TEN)
+        this.mockWeiDai = await MockWeiDai.new({ from: owner })
 
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, this.mockWeiDai.address, { from: owner })
         await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
         await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })
@@ -256,12 +258,13 @@ describe('Behodler2: Pyrotoken', async function () {
         this.eye = await MockToken1.new({ from: owner })
         this.invalidToken = await MockToken1.new({ from: owner })
         this.flashLoanArbiter = await OpenArbiter.new({ from: owner })
-        this.lachesis = await Lachesis.new(this.uniswap.address,this.sushiswap.address,{ from: owner })
+        this.lachesis = await Lachesis.new(this.uniswap.address, this.sushiswap.address, { from: owner })
         await this.regularToken.mint(trader1, 2n * TEN)
         await this.burnableToken.mint(trader1, 2n * TEN)
         await this.invalidToken.mint(trader1, TEN)
+        this.mockWeiDai = await MockWeiDai.new({ from: owner })
 
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve,this.mockWeiDai.address, this.dai.address, { from: owner })
         await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
         await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })

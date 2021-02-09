@@ -15,6 +15,7 @@ const InertFlashLoanReceiver = contract.fromArtifact('InertFlashLoanReceiver')
 const LiquidityReceiver = contract.fromArtifact('LiquidityReceiver')
 const DodgyFlashLoanReceiver = contract.fromArtifact('DodgyFlashLoanReceiver')
 const MockSwapFactory = contract.fromArtifact('MockSwapFactory')
+const MockWeiDai = contract.fromArtifact('MockWeiDai')
 
 const TEN = 10000000000000000000n
 const ONE = 1000000000000000000n
@@ -42,16 +43,17 @@ describe('FlashLoans', async function () {
         this.invalidToken = await MockToken1.new({ from: owner })
         this.openArbiter = await OpenArbiter.new({ from: owner })
         this.rejectionArbiter = await RejectionArbiter.new({ from: owner })
-        this.lachesis = await Lachesis.new(this.uniswap.address,this.sushiswap.address,{ from: owner })
+        this.lachesis = await Lachesis.new(this.uniswap.address, this.sushiswap.address, { from: owner })
         this.inertFlashLoanReceiver = await InertFlashLoanReceiver.new({ from: owner })
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
         this.dodgyFlashLoanReceiver = await DodgyFlashLoanReceiver.new(this.behodler.address, trader1, { from: owner });
+        this.mockWeiDai = await MockWeiDai.new({ from: owner })
 
         await this.regularToken.mint(trader1, 2n * TEN)
         await this.burnableToken.mint(trader1, 2n * TEN)
         await this.invalidToken.mint(trader1, TEN)
 
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.openArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.openArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, this.mockWeiDai.address, { from: owner })
         await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
         await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })
@@ -68,7 +70,7 @@ describe('FlashLoans', async function () {
 
     it('tries to borrow scx from rejection arbiter fails', async function () {
         this.timeout(500000);
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.rejectionArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, { from: owner })
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.rejectionArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.dai.address, this.mockWeiDai.address, { from: owner })
         await expectRevert(this.behodler.grantFlashLoan(10000, this.inertFlashLoanReceiver.address, { from: trader1 }), 'BEHODLER: cannot borrow flashloan')
     })
 
