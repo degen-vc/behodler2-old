@@ -7,7 +7,7 @@ const bigNum = require('./helpers/BigIntUtil')
 const Behodler = contract.fromArtifact('Behodler');
 const AddressBalanceCheck = contract.fromArtifact('AddressBalanceCheck');
 const MockToken1 = contract.fromArtifact('MockToken1')
-const MockWeth = contract.fromArtifact('MockWeth')
+const Weth = contract.fromArtifact('WETH10')
 const OpenArbiter = contract.fromArtifact('OpenArbiter')
 const Lachesis = contract.fromArtifact('Lachesis')
 const LiquidityReceiver = contract.fromArtifact('LiquidityReceiver')
@@ -34,7 +34,7 @@ describe('Behodler1', async function () {
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
         this.indirectSwap = await IndirectSwap.new(this.behodler.address, { from: owner });
 
-        this.weth = await MockWeth.new({ from: owner })
+        this.weth = await Weth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
         this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
 
@@ -88,7 +88,7 @@ describe('Behodler1', async function () {
         const scarcityBalanceAfterSecondAdd = await bigNum.BNtoBigInt(this.behodler.balanceOf.call(trader1))
 
         const expectedScarcityAfterSecondAdd = '220055976853273918971'
-        assert.equal(scarcityBalanceAfterSecondAdd.toString(),expectedScarcityAfterSecondAdd)
+        assert.equal(scarcityBalanceAfterSecondAdd.toString(), expectedScarcityAfterSecondAdd)
 
         await this.behodler.addLiquidity(this.burnableToken.address, 2n * FINNEY, { from: trader1 })
         const expectedBalanceAfterThirdAdd = expectedBalanceAfterSecondAdd - 2n * FINNEY
@@ -244,7 +244,7 @@ describe('Behodler2: Pyrotoken', async function () {
         this.behodler = await Behodler.new({ from: owner });
 
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
-        this.weth = await MockWeth.new({ from: owner })
+        this.weth = await Weth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
         this.liquidityReceiver.registerPyroToken(this.regularToken.address, { from: owner });
         const regularTokenAddress = this.regularToken.address;
@@ -264,7 +264,7 @@ describe('Behodler2: Pyrotoken', async function () {
         await this.invalidToken.mint(trader1, TEN)
         this.mockWeiDai = await MockWeiDai.new({ from: owner })
 
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve,this.mockWeiDai.address, this.dai.address, { from: owner })
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.mockWeiDai.address, this.dai.address, { from: owner })
         await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
         await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })

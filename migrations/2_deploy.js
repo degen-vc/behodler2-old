@@ -60,13 +60,13 @@ module.exports = async function (deployer, network, accounts) {
 
     fs.writeFileSync('behodler2DevAddresses.json', JSON.stringify(addresses, null, 4), 'utf8')
 
-    // for (let i = 0; i < tokens.length; i++) {
-    //     await lachesisInstance.measure(tokens[i], true, false)
-    //     await lachesisInstance.updateBehodler(tokens[i])
-    // }
+    for (let i = 0; i < tokens.length; i++) {
+        await lachesisInstance.measure(tokens[i], true, false)
+        await lachesisInstance.updateBehodler(tokens[i])
+    }
 
-    // await lachesisInstance.measure(weiDaiStuff['weiDai'], true, false)
-    // await lachesisInstance.updateBehodler(weiDaiStuff['weiDai'])
+    await lachesisInstance.measure(weiDaiStuff['weiDai'], true, false)
+    await lachesisInstance.updateBehodler(weiDaiStuff['weiDai'])
     console.log('BEHODLER 2 MIGRATION COMPLETE')
 }
 
@@ -76,7 +76,7 @@ function getTokenAddresses() {
     const content = fs.readFileSync(location, 'utf-8')
     const structure = JSON.parse(content)
     const list = structure.filter(s => s.name == 'development')[0].list
-    const predicate = (item) => item.contract.startsWith('Mock')
+    const predicate = (item) => item.contract.startsWith('FeeOnTransferToken')//previously mock
     const behodlerAddresses = list.filter(predicate).map(item => item.address)
     return behodlerAddresses
 }

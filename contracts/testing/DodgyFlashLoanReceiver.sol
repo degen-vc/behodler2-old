@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.6;
 import "../flashLoans/FlashLoanReceiver.sol";
 import "../openzeppelin/IERC20.sol";
 
  contract DodgyFlashLoanReceiver is FlashLoanReceiver {
     address scx;
-    address sender;
-    constructor (address _scx, address recipient){
+    constructor (address _scx){
         scx = _scx;
-        sender =recipient;
     }
-    function execute () public override {
-        IERC20(scx).transfer(sender,1);
+    function execute (address caller) public override {
+        IERC20(scx).transfer(caller,1);
     }
 }

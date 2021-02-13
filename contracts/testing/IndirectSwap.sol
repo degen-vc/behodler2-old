@@ -1,4 +1,5 @@
-pragma solidity ^0.7.1;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.7.6;
 import "../facades/BehodlerLike.sol";
 
 abstract contract ERC20 {

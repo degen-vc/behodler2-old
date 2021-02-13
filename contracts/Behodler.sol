@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.6;
 
 import "./openzeppelin/Ownable.sol";
 import "./Scarcity.sol";
@@ -9,12 +9,7 @@ import "./openzeppelin/SafeMath.sol";
 import "./openzeppelin/IERC20.sol";
 import "./flashLoans/FlashLoanReceiver.sol";
 import "./flashLoans/FlashLoanArbiter.sol";
-
-interface IWeth {
-    function deposit() external payable;
-
-    function withdraw(uint256 value) external;
-}
+import "./WETH10.sol";
 
 library AddressBalanceCheck {
     function tokenBalance(address token) public view returns (uint256) {
@@ -211,7 +206,7 @@ contract Behodler is Scarcity {
     function setSafetParameters(
         uint8 swapPrecisionFactor,
         uint8 maxLiquidityExit
-    ) public onlyOwner {
+    ) external onlyOwner {
         safetyParameters.swapPrecisionFactor = swapPrecisionFactor;
         safetyParameters.maxLiquidityExit = maxLiquidityExit;
     }
@@ -228,7 +223,7 @@ contract Behodler is Scarcity {
         address weidaiReserve,
         address dai,
         address weiDai
-    ) public onlyOwner {
+    ) external onlyOwner {
         Weth = weth;
         Lachesis = lachesis;
         arbiter = FlashLoanArbiter(flashLoanArbiter);
@@ -307,7 +302,7 @@ contract Behodler is Scarcity {
         uint256 inputAmount,
         uint256 outputAmount
     )
-        public
+        external
         payable
         determineSender(inputToken)
         onlyValidToken(inputToken)
@@ -323,7 +318,7 @@ contract Behodler is Scarcity {
                     msg.value == inputAmount,
                     "BEHODLER: Insufficient Ether sent"
                 );
-                IWeth(Weth).deposit{value: msg.value}();
+                IWETH10(Weth).deposit{value: msg.value}();
             }
         } else {
             inputToken.transferIn(inputSender, inputAmount);
@@ -362,10 +357,8 @@ contract Behodler is Scarcity {
         );
 
         if (outputToken == Weth) {
-            IWeth(Weth).withdraw(outputAmount);
             address payable sender = msg.sender;
-            (bool unwrapped, ) = sender.call{value: outputAmount}("");
-            require(unwrapped, "BEHODLER: Unwrapping of Weth failed.");
+            IWETH10(Weth).withdrawTo(sender, outputAmount);
         } else {
             outputToken.transferOut(msg.sender, outputAmount);
         }
@@ -388,7 +381,7 @@ contract Behodler is Scarcity {
         "What I told you was true, from a certain point of view." - Obi-Wan Kenobi
      */
     function addLiquidity(address inputToken, uint256 amount)
-        public
+        external
         payable
         determineSender(inputToken)
         onlyValidToken(inputToken)
@@ -405,7 +398,7 @@ contract Behodler is Scarcity {
                     msg.value == amount,
                     "BEHODLER: Insufficient Ether sent"
                 );
-                IWeth(Weth).deposit{value: msg.value}();
+                IWETH10(Weth).deposit{value: msg.value}();
             }
         } else {
             inputToken.transferIn(inputSender, amount);
@@ -442,7 +435,7 @@ contract Behodler is Scarcity {
         "From my point of view, the Jedi are evil" - Darth Vader
      */
     function withdrawLiquidity(address outputToken, uint256 tokensToRelease)
-        public
+        external
         payable
         determineSender(outputToken)
         onlyValidToken(outputToken)
@@ -472,10 +465,8 @@ contract Behodler is Scarcity {
         burn(msg.sender, deltaSCX);
 
         if (outputToken == Weth) {
-            IWeth(Weth).withdraw(tokensToRelease);
             address payable sender = msg.sender;
-            (bool unwrapped, ) = sender.call{value: tokensToRelease}("");
-            require(unwrapped, "BEHODLER: Unwrapping of Weth failed.");
+            IWETH10(Weth).withdrawTo(sender, tokensToRelease);
         } else {
             outputToken.transferOut(msg.sender, tokensToRelease);
         }
@@ -502,7 +493,7 @@ contract Behodler is Scarcity {
         uint256 tokensToRelease,
         uint256 scx,
         uint256 passes
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         uint256 upperBoundary = outputToken.tokenBalance();
         uint256 lowerBoundary = 0;
 
@@ -543,13 +534,15 @@ contract Behodler is Scarcity {
     //the borrower asks for SCX. Theoretically you can borrow more SCX than currently exists so long
     //as you can think of a clever way to pay it back.
     //Note: Borrower doesn't have to send scarcity back, they just need to have high enough balance.
-    function grantFlashLoan(uint256 amount, address flashLoanContract) public {
+    function grantFlashLoan(uint256 amount, address flashLoanContract)
+        external
+    {
         require(
             arbiter.canBorrow(msg.sender),
             "BEHODLER: cannot borrow flashloan"
         );
         balances[flashLoanContract] = balances[flashLoanContract].add(amount);
-        FlashLoanReceiver(flashLoanContract).execute();
+        FlashLoanReceiver(flashLoanContract).execute(msg.sender); //TODO test
         balances[flashLoanContract] = balances[flashLoanContract].sub(
             amount,
             "BEHODLER: Flashloan repayment failed"
@@ -557,10 +550,10 @@ contract Behodler is Scarcity {
     }
 
     //useful for when we want the ability to add tokens without trading. For instance, the initial liquidity queueing event.
-    function setWhiteListUser(address user, bool whiteList) public onlyOwner {
+    function setWhiteListUser(address user, bool whiteList) external onlyOwner {
         whiteListUsers[user] = whiteList;
     }
-    
+
     function burnToken(address token, uint256 amount)
         private
         returns (uint256 burnt)
@@ -582,7 +575,7 @@ contract Behodler is Scarcity {
         address token,
         bool valid,
         bool burnable
-    ) public onlyLachesis {
+    ) external onlyLachesis {
         validTokens[token] = valid;
         tokenBurnable[token] = burnable;
     }

@@ -7,7 +7,7 @@ const bigNum = require('./helpers/BigIntUtil')
 const Behodler = contract.fromArtifact('Behodler');
 const AddressBalanceCheck = contract.fromArtifact('AddressBalanceCheck');
 const MockToken1 = contract.fromArtifact('MockToken1')
-const MockWeth = contract.fromArtifact('MockWeth')
+const Weth = contract.fromArtifact('WETH10')
 const OpenArbiter = contract.fromArtifact('OpenArbiter')
 const RejectionArbiter = contract.fromArtifact('MockRejectionArbiter')
 const Lachesis = contract.fromArtifact('Lachesis')
@@ -34,7 +34,7 @@ describe('FlashLoans', async function () {
         await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
         this.behodler = await Behodler.new({ from: owner });
 
-        this.weth = await MockWeth.new({ from: owner })
+        this.weth = await Weth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
 
         this.dai = await MockToken1.new({ from: owner })
@@ -46,7 +46,7 @@ describe('FlashLoans', async function () {
         this.lachesis = await Lachesis.new(this.uniswap.address, this.sushiswap.address, { from: owner })
         this.inertFlashLoanReceiver = await InertFlashLoanReceiver.new({ from: owner })
         this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
-        this.dodgyFlashLoanReceiver = await DodgyFlashLoanReceiver.new(this.behodler.address, trader1, { from: owner });
+        this.dodgyFlashLoanReceiver = await DodgyFlashLoanReceiver.new(this.behodler.address, { from: owner });
         this.mockWeiDai = await MockWeiDai.new({ from: owner })
 
         await this.regularToken.mint(trader1, 2n * TEN)
