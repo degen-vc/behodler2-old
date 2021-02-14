@@ -5,6 +5,7 @@ const LiquidityReceiver = artifacts.require('LiquidityReceiver')
 const AddressBalanceCheck = artifacts.require('AddressBalanceCheck')
 const ABDK = artifacts.require('ABDK')
 const MockSwapFactory = artifacts.require('MockSwapFactory')
+const WETH10 = artifacts.require('WETH10')
 const redis = require('redis')
 const client = redis.createClient();
 client.on('error', console.log)
@@ -39,9 +40,11 @@ module.exports = async function (deployer, network, accounts) {
     var tokens = getTokenAddresses()
     var weiDaiStuff = getWeiDaiStuff()
     var wethAddress = getWeth(tokens)
-
+    await deployer.deploy(WETH10)
+    const weth10Instance = await WETH10.deployed()
     await behodlerInstance.configureScarcity(110, 25, accounts[0])
-    await behodlerInstance.seed(wethAddress,
+    
+    await behodlerInstance.seed(weth10Instance.address,
         lachesisInstance.address,
         openArbiterInstance.address,
         liquidityReceiverInstance.address,

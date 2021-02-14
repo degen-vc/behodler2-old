@@ -542,7 +542,7 @@ contract Behodler is Scarcity {
             "BEHODLER: cannot borrow flashloan"
         );
         balances[flashLoanContract] = balances[flashLoanContract].add(amount);
-        FlashLoanReceiver(flashLoanContract).execute(msg.sender); //TODO test
+        FlashLoanReceiver(flashLoanContract).execute(msg.sender); 
         balances[flashLoanContract] = balances[flashLoanContract].sub(
             amount,
             "BEHODLER: Flashloan repayment failed"

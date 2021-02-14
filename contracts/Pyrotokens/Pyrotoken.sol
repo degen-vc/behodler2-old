@@ -12,6 +12,19 @@ abstract contract ERC20MetaData {
 }
 
 contract Pyrotoken is IERC20 {
+    event Mint(
+        address minter,
+        address baseToken,
+        address pyrotoken,
+        uint256 redeemRate
+    );
+    event Redeem(
+        address redeemer,
+        address baseToken,
+        address pyrotoken,
+        uint256 redeemRate
+    );
+
     using SafeMath for uint256;
     uint256 _totalSupply;
     mapping(address => uint256) balances;
@@ -96,16 +109,18 @@ contract Pyrotoken is IERC20 {
     }
 
     function mint(uint256 baseTokenAmount) external updateReserve {
-        uint256 pyroTokensToMint = baseTokenAmount.mul(ONE).div(redeemRate());
+        uint256 rate = redeemRate();
+        uint256 pyroTokensToMint = baseTokenAmount.mul(ONE).div(rate);
         require(
             IERC20(baseToken).transferFrom(
                 msg.sender,
                 address(this),
                 baseTokenAmount
             ),
-            "PYROTOKEN: basetoken transfer failed."
+            "PYROTOKEN: baseToken transfer failed."
         );
         mint(msg.sender, pyroTokensToMint);
+        emit Mint(msg.sender, baseToken, address(this), rate);
     }
 
     function redeem(uint256 pyroTokenAmount) external updateReserve {
@@ -114,11 +129,13 @@ contract Pyrotoken is IERC20 {
             pyroTokenAmount,
             "PYROTOKEN: insufficient balance"
         );
+        uint256 rate = redeemRate();
         _totalSupply = _totalSupply.sub(pyroTokenAmount);
         uint256 exitFee = pyroTokenAmount.mul(2).div(100); //2% burn on exit pushes up price for remaining hodlers
         uint256 net = pyroTokenAmount.sub(exitFee);
-        uint256 baseTokensToRelease = redeemRate().mul(net).div(ONE);
+        uint256 baseTokensToRelease = rate.mul(net).div(ONE);
         IERC20(baseToken).transfer(msg.sender, baseTokensToRelease);
+        emit Redeem(msg.sender, baseToken, address(this), rate);
     }
 
     function redeemRate() public view returns (uint256) {
@@ -143,7 +160,7 @@ contract Pyrotoken is IERC20 {
         address recipient,
         uint256 amount
     ) internal {
-        uint256 burnFee = amount.div(1000);//0.1%
+        uint256 burnFee = amount.div(1000); //0.1%
         balances[recipient] = balances[recipient].add(amount - burnFee);
         balances[sender] = balances[sender].sub(amount);
         _totalSupply = _totalSupply.sub(burnFee);
