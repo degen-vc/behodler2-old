@@ -15,13 +15,13 @@ contract Pyrotoken is IERC20 {
     event Mint(
         address minter,
         address baseToken,
-        address pyrotoken,
+        address pyroToken,
         uint256 redeemRate
     );
     event Redeem(
         address redeemer,
         address baseToken,
-        address pyrotoken,
+        address pyroToken,
         uint256 redeemRate
     );
 
