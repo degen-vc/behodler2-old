@@ -2,15 +2,28 @@
 pragma solidity ^0.7.6;
 import "../openzeppelin/IERC20.sol";
 import "./Pyrotoken.sol";
+import "../Lachesis.sol";
+import "../openzeppelin/Ownable.sol";
 
-contract LiquidityReceiver {
+contract LiquidityReceiver is Ownable {
+    Lachesis lachesis;
     mapping(address => address) public baseTokenMapping;
+
+    constructor(address _lachesis) {
+        lachesis = Lachesis(_lachesis);
+    }
+
+    function setLachesis(address _lachesis) public onlyOwner {
+        lachesis = Lachesis(_lachesis);
+    }
 
     function registerPyroToken(address baseToken) public {
         require(
             baseTokenMapping[baseToken] == address(0),
             "BEHODLER: pyrotoken already registered"
         );
+        (bool valid, bool burnable) = lachesis.cut(baseToken);
+        require(valid && !burnable, "invalid pyrotoken registration.");
         Pyrotoken pyro = new Pyrotoken(baseToken, address(this));
         baseTokenMapping[baseToken] = address(pyro);
     }

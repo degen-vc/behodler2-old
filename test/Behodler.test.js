@@ -31,7 +31,8 @@ describe('Behodler1', async function () {
         await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
         this.behodler = await Behodler.new({ from: owner });
 
-        this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
+        this.lachesis = await Lachesis.new(this.uniswap.address, this.sushiswap.address, { from: owner })
+        this.liquidityReceiver = await LiquidityReceiver.new(this.lachesis.address, { from: owner });
         this.indirectSwap = await IndirectSwap.new(this.behodler.address, { from: owner });
 
         this.weth = await Weth.new({ from: owner })
@@ -43,7 +44,7 @@ describe('Behodler1', async function () {
         this.eye = await MockToken1.new({ from: owner })
         this.invalidToken = await MockToken1.new({ from: owner })
         this.flashLoanArbiter = await OpenArbiter.new({ from: owner })
-        this.lachesis = await Lachesis.new(this.uniswap.address, this.sushiswap.address, { from: owner })
+
         await this.regularToken.mint(trader1, 2000000n * TEN)
         await this.burnableToken.mint(trader1, 2000000n * TEN)
         await this.invalidToken.mint(trader1, TEN)
@@ -243,14 +244,10 @@ describe('Behodler2: Pyrotoken', async function () {
         await Behodler.link('AddressBalanceCheck', addressBalanceCheckLib.address)
         this.behodler = await Behodler.new({ from: owner });
 
-        this.liquidityReceiver = await LiquidityReceiver.new({ from: owner });
+
         this.weth = await Weth.new({ from: owner })
         this.regularToken = await MockToken1.new({ from: owner })
-        this.liquidityReceiver.registerPyroToken(this.regularToken.address, { from: owner });
-        const regularTokenAddress = this.regularToken.address;
-        const pyroTokenAddress = await this.liquidityReceiver.baseTokenMapping.call(regularTokenAddress)
 
-        this.pyroRegular = await PyroToken.at(pyroTokenAddress)
         // this.pyroRegular = await PyroToken.new(this.regularToken.address, this.liquidityReceiver.address)
 
         this.dai = await MockToken1.new({ from: owner })
@@ -259,19 +256,30 @@ describe('Behodler2: Pyrotoken', async function () {
         this.invalidToken = await MockToken1.new({ from: owner })
         this.flashLoanArbiter = await OpenArbiter.new({ from: owner })
         this.lachesis = await Lachesis.new(this.uniswap.address, this.sushiswap.address, { from: owner })
+
+        const regularTokenAddress = this.regularToken.address;
+
+
+
         await this.regularToken.mint(trader1, 2n * TEN)
         await this.burnableToken.mint(trader1, 2n * TEN)
         await this.invalidToken.mint(trader1, TEN)
         this.mockWeiDai = await MockWeiDai.new({ from: owner })
-
-        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.mockWeiDai.address, this.dai.address, { from: owner })
-        await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.measure(this.regularToken.address, true, false, { from: owner })
         await this.lachesis.measure(this.burnableToken.address, true, true, { from: owner })
 
         await this.lachesis.setBehodler(this.behodler.address, { from: owner })
+     
+        this.liquidityReceiver = await LiquidityReceiver.new(this.lachesis.address, { from: owner });
+        this.liquidityReceiver.registerPyroToken(this.regularToken.address, { from: owner });
+        const pyroTokenAddress = await this.liquidityReceiver.baseTokenMapping.call(regularTokenAddress)
+        this.pyroRegular = await PyroToken.at(pyroTokenAddress)
+
+        await this.behodler.seed(this.weth.address, this.lachesis.address, this.flashLoanArbiter.address, this.liquidityReceiver.address, weiDaiReserve, this.mockWeiDai.address, this.dai.address, { from: owner })
+        await this.behodler.configureScarcity(110, 25, feeDestination, { from: owner })
         await this.lachesis.updateBehodler(this.regularToken.address, { from: owner })
         await this.lachesis.updateBehodler(this.burnableToken.address, { from: owner })
+
     })
 
     it('adding liquidity as non burnable fills liquidity receiver which fills pyrotoken', async function () {

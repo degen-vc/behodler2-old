@@ -24,7 +24,7 @@ module.exports = async function (deployer, network, accounts) {
     await deployer.deploy(OpenArbiter)
     openArbiterInstance = await OpenArbiter.deployed()
 
-    await deployer.deploy(LiquidityReceiver)
+    await deployer.deploy(LiquidityReceiver, lachesisInstance.address)
     liquidityReceiverInstance = await LiquidityReceiver.deployed();
 
     await deployer.deploy(AddressBalanceCheck)
