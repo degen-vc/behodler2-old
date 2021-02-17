@@ -43,7 +43,7 @@ module.exports = async function (deployer, network, accounts) {
     await deployer.deploy(WETH10)
     const weth10Instance = await WETH10.deployed()
     await behodlerInstance.configureScarcity(110, 25, accounts[0])
-    
+
     await behodlerInstance.seed(weth10Instance.address,
         lachesisInstance.address,
         openArbiterInstance.address,
@@ -79,7 +79,7 @@ function getTokenAddresses() {
     const content = fs.readFileSync(location, 'utf-8')
     const structure = JSON.parse(content)
     const list = structure.filter(s => s.name == 'development')[0].list
-    const predicate = (item) => item.contract.startsWith('FeeOnTransferToken')//previously mock
+    const predicate = (item) => true// item.contract.startsWith('FeeOnTransferToken')//previously mock
     const behodlerAddresses = list.filter(predicate).map(item => item.address)
     return behodlerAddresses
 }

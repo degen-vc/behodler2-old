@@ -174,7 +174,7 @@ contract WETH10 is IWETH10 {
 
     string public constant name = "Wrapped Ether v10";
     string public constant symbol = "WETH10";
-    uint8  public constant decimals = 18;
+    uint8  public override constant decimals = 18;
 
     bytes32 public immutable CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
     bytes32 public immutable PERMIT_TYPEHASH = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");

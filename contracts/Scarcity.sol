@@ -63,7 +63,7 @@ contract Scarcity is IERC20, Ownable {
         return "SCX";
     }
 
-    function decimals() public pure returns (uint8) {
+    function decimals() public override pure returns (uint8) {
         return 18;
     }
 

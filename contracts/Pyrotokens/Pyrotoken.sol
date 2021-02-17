@@ -47,7 +47,7 @@ contract Pyrotoken is IERC20 {
 
     string public name;
     string public symbol;
-    uint256 public decimals;
+    uint8 public override decimals;
 
     modifier updateReserve {
         liquidityReceiver.drain(address(this));

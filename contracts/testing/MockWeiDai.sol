@@ -12,6 +12,10 @@ contract MockWeiDai is IERC20 {
     string public name = "Mock";
     string public symbol = "MCK";
 
+    function decimals() public override returns (uint8) {
+        return 18;
+    }
+
     function setSupply(uint256 supply) public {
         _totalSupply = supply;
     }

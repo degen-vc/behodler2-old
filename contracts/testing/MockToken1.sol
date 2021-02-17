@@ -16,6 +16,10 @@ contract MockToken1 is IERC20 {
         _totalSupply = supply;
     }
 
+    function decimals() public override returns (uint8) {
+        return 18;
+    }
+
     function totalSupply() external override view returns (uint256) {
         return _totalSupply;
     }
