@@ -36,10 +36,10 @@ contract Pyrotoken is IERC20 {
     constructor(address _baseToken, address _liquidityReceiver) {
         baseToken = _baseToken;
         name = string(
-            abi.encodePacked("Pyro ", ERC20MetaData(baseToken).name())
+            abi.encodePacked("Pyro", ERC20MetaData(baseToken).name())
         );
         symbol = string(
-            abi.encodePacked("Pyro", ERC20MetaData(baseToken).symbol())
+            abi.encodePacked("p", ERC20MetaData(baseToken).symbol())
         );
         decimals = 18;
         liquidityReceiver = LiquidityReceiver(_liquidityReceiver);
@@ -108,7 +108,7 @@ contract Pyrotoken is IERC20 {
         return true;
     }
 
-    function mint(uint256 baseTokenAmount) external updateReserve {
+    function mint(uint256 baseTokenAmount) external updateReserve returns (uint) {
         uint256 rate = redeemRate();
         uint256 pyroTokensToMint = baseTokenAmount.mul(ONE).div(rate);
         require(
@@ -121,9 +121,10 @@ contract Pyrotoken is IERC20 {
         );
         mint(msg.sender, pyroTokensToMint);
         emit Mint(msg.sender, baseToken, address(this), rate);
+        return pyroTokensToMint;
     }
 
-    function redeem(uint256 pyroTokenAmount) external updateReserve {
+    function redeem(uint256 pyroTokenAmount) external updateReserve returns (uint) {
         //no approval necessary
         balances[msg.sender] = balances[msg.sender].sub(
             pyroTokenAmount,
@@ -136,6 +137,7 @@ contract Pyrotoken is IERC20 {
         uint256 baseTokensToRelease = rate.mul(net).div(ONE);
         IERC20(baseToken).transfer(msg.sender, baseTokensToRelease);
         emit Redeem(msg.sender, baseToken, address(this), rate);
+        return baseTokensToRelease;
     }
 
     function redeemRate() public view returns (uint256) {

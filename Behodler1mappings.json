@@ -2789,6 +2789,32 @@
                         "outputs": [],
                         "stateMutability": "nonpayable",
                         "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "name",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "symbol",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
                     }
                 ]
             },
@@ -3047,6 +3073,32 @@
                         "outputs": [],
                         "stateMutability": "nonpayable",
                         "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "name",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "symbol",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
                     }
                 ]
             },
@@ -3292,6 +3344,32 @@
                         ],
                         "stateMutability": "nonpayable",
                         "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "name",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "symbol",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
                     }
                 ]
             },
@@ -3424,20 +3502,6 @@
                         "constant": true
                     },
                     {
-                        "inputs": [],
-                        "name": "decimals",
-                        "outputs": [
-                            {
-                                "internalType": "uint8",
-                                "name": "",
-                                "type": "uint8"
-                            }
-                        ],
-                        "stateMutability": "view",
-                        "type": "function",
-                        "constant": true
-                    },
-                    {
                         "inputs": [
                             {
                                 "internalType": "address",
@@ -3562,6 +3626,32 @@
                         ],
                         "name": "burn",
                         "outputs": [],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "name",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "symbol",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
                         "stateMutability": "nonpayable",
                         "type": "function"
                     }
@@ -4092,6 +4182,32 @@
                         ],
                         "name": "withdraw",
                         "outputs": [],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "name",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "symbol",
+                        "outputs": [
+                            {
+                                "internalType": "string",
+                                "name": "",
+                                "type": "string"
+                            }
+                        ],
                         "stateMutability": "nonpayable",
                         "type": "function"
                     }

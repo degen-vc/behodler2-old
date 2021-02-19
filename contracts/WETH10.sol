@@ -172,7 +172,7 @@ interface IApprovalReceiver {
 /// balance of ETH deposited minus the ETH withdrawn with that specific wallet.
 contract WETH10 is IWETH10 {
 
-    string public constant name = "Wrapped Ether v10";
+    string public constant name = "WETH10";
     string public constant symbol = "WETH10";
     uint8  public override constant decimals = 18;
 

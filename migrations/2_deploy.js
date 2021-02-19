@@ -9,7 +9,7 @@ const WETH10 = artifacts.require('WETH10')
 const redis = require('redis')
 const client = redis.createClient();
 client.on('error', console.log)
-
+const weth10Location = './weth10.txt'
 const fs = require('fs')
 module.exports = async function (deployer, network, accounts) {
     var lachesisInstance, openArbiterInstance, behodlerInstance, liquidityReceiverInstance
@@ -26,7 +26,7 @@ module.exports = async function (deployer, network, accounts) {
 
     await deployer.deploy(LiquidityReceiver, lachesisInstance.address)
     liquidityReceiverInstance = await LiquidityReceiver.deployed();
-
+    client.set('liquidityReceiver', liquidityReceiverInstance.address)
     await deployer.deploy(AddressBalanceCheck)
     await deployer.link(AddressBalanceCheck, Behodler)
 
@@ -42,6 +42,8 @@ module.exports = async function (deployer, network, accounts) {
     var wethAddress = getWeth(tokens)
     await deployer.deploy(WETH10)
     const weth10Instance = await WETH10.deployed()
+    client.set('WETH10', weth10Instance.address)
+    fs.writeFileSync(weth10Location,weth10Instance.address)
     await behodlerInstance.configureScarcity(110, 25, accounts[0])
 
     await behodlerInstance.seed(weth10Instance.address,
@@ -63,9 +65,11 @@ module.exports = async function (deployer, network, accounts) {
 
     fs.writeFileSync('behodler2DevAddresses.json', JSON.stringify(addresses, null, 4), 'utf8')
 
+    console.log('tokens: ' + JSON.stringify(tokens))
     for (let i = 0; i < tokens.length; i++) {
         await lachesisInstance.measure(tokens[i], true, false)
         await lachesisInstance.updateBehodler(tokens[i])
+        await liquidityReceiverInstance.registerPyroToken(tokens[i])
     }
 
     await lachesisInstance.measure(weiDaiStuff['weiDai'], true, false)
@@ -79,7 +83,7 @@ function getTokenAddresses() {
     const content = fs.readFileSync(location, 'utf-8')
     const structure = JSON.parse(content)
     const list = structure.filter(s => s.name == 'development')[0].list
-    const predicate = (item) => true// item.contract.startsWith('FeeOnTransferToken')//previously mock
+    const predicate = (item) => item.contract.toLowerCase().startsWith('feeontransfer')//previously mock
     const behodlerAddresses = list.filter(predicate).map(item => item.address)
     return behodlerAddresses
 }
