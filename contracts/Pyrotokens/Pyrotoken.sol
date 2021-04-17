@@ -3,7 +3,10 @@ pragma solidity ^0.7.6;
 
 import "../openzeppelin/IERC20.sol";
 import "../openzeppelin/SafeMath.sol";
-import "./LiquidityReceiver.sol";
+
+abstract contract LiquidityReceiverFacade{
+   function drain(address pyroToken) public virtual;
+}
 
 abstract contract ERC20MetaData {
     function symbol() public virtual returns (string memory);
@@ -31,7 +34,7 @@ contract Pyrotoken is IERC20 {
     mapping(address => mapping(address => uint256)) allowances;
     address public baseToken;
     uint256 constant ONE = 1e18;
-    LiquidityReceiver liquidityReceiver;
+    LiquidityReceiverFacade liquidityReceiver;
 
     constructor(address _baseToken, address _liquidityReceiver) {
         baseToken = _baseToken;
@@ -42,11 +45,11 @@ contract Pyrotoken is IERC20 {
             abi.encodePacked("p", ERC20MetaData(baseToken).symbol())
         );
         decimals = 18;
-        liquidityReceiver = LiquidityReceiver(_liquidityReceiver);
+        liquidityReceiver = LiquidityReceiverFacade(_liquidityReceiver);
     }
 
-    string public name;
-    string public symbol;
+    string public override name;
+    string public override symbol;
     uint8 public override decimals;
 
     modifier updateReserve {

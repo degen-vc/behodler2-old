@@ -55,11 +55,11 @@ contract Scarcity is IERC20, Ownable {
         migrator = m;
     }
 
-    function name() public pure returns (string memory) {
+    function name() public pure override returns (string memory) {
         return "Scarcity";
     }
 
-    function symbol() public pure returns (string memory) {
+    function symbol() public pure override returns (string memory) {
         return "SCX";
     }
 

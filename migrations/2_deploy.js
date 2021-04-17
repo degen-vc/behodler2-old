@@ -43,7 +43,7 @@ module.exports = async function (deployer, network, accounts) {
     await deployer.deploy(WETH10)
     const weth10Instance = await WETH10.deployed()
     client.set('WETH10', weth10Instance.address)
-    fs.writeFileSync(weth10Location,weth10Instance.address)
+    fs.writeFileSync(weth10Location, weth10Instance.address)
     await behodlerInstance.configureScarcity(110, 25, accounts[0])
 
     await behodlerInstance.seed(weth10Instance.address,
@@ -64,12 +64,23 @@ module.exports = async function (deployer, network, accounts) {
     }
 
     fs.writeFileSync('behodler2DevAddresses.json', JSON.stringify(addresses, null, 4), 'utf8')
+    try {
+        await lachesisInstance.measure(weth10Instance.address, true, false)
+        await lachesisInstance.updateBehodler(weth10Instance.address)
+        await liquidityReceiverInstance.registerPyroToken(weth10Instance.address)
+    } catch {
+
+    }
 
     console.log('tokens: ' + JSON.stringify(tokens))
     for (let i = 0; i < tokens.length; i++) {
-        await lachesisInstance.measure(tokens[i], true, false)
-        await lachesisInstance.updateBehodler(tokens[i])
-        await liquidityReceiverInstance.registerPyroToken(tokens[i])
+        try {
+            await lachesisInstance.measure(tokens[i], true, false)
+            await lachesisInstance.updateBehodler(tokens[i])
+            await liquidityReceiverInstance.registerPyroToken(tokens[i])
+        } catch {
+
+        }
     }
 
     await lachesisInstance.measure(weiDaiStuff['weiDai'], true, false)
@@ -83,7 +94,7 @@ function getTokenAddresses() {
     const content = fs.readFileSync(location, 'utf-8')
     const structure = JSON.parse(content)
     const list = structure.filter(s => s.name == 'development')[0].list
-    const predicate = (item) => item.contract.toLowerCase().startsWith('feeontransfer')//previously mock
+    const predicate = (item) => item.contract.toLowerCase().startsWith('mock')///item.contract.toLowerCase().startsWith('mock')//previously mock
     const behodlerAddresses = list.filter(predicate).map(item => item.address)
     return behodlerAddresses
 }

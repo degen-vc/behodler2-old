@@ -172,8 +172,8 @@ interface IApprovalReceiver {
 /// balance of ETH deposited minus the ETH withdrawn with that specific wallet.
 contract WETH10 is IWETH10 {
 
-    string public constant name = "WETH10";
-    string public constant symbol = "WETH10";
+    string public constant override name = "WETH10";
+    string public constant override symbol = "WETH10";
     uint8  public override constant decimals = 18;
 
     bytes32 public immutable CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");

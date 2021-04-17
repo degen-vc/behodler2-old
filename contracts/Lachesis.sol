@@ -48,7 +48,7 @@ contract Lachesis is Ownable, LachesisLike {
         config[token] = tokenConfig({valid: valid, burnable: burnable});
     }
 
-    function measureLP(address token1, address token2) public {
+    function measureLP(address token1, address token2) public onlyOwner {
         require(
             config[token1].valid && config[token2].valid,
             "LACHESIS: Only valid tokens can have their LP added"

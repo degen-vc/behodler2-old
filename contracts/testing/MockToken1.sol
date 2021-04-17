@@ -9,8 +9,8 @@ contract MockToken1 is IERC20 {
     mapping(address => uint256) balances;
     mapping(address => mapping(address => uint256)) allowances;
 
-    string public name = "Mock";
-    string public symbol = "MCK";
+    string public override name = "Mock";
+    string public override symbol = "MCK";
 
     function setSupply(uint256 supply) public {
         _totalSupply = supply;
