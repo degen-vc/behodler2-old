@@ -7,8 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "compile": "touch build/contracts/horse && rm -rf build/contracts/* && truffle compile",
-    "test": "npm run compile && mocha --exit --recursive --timeout 10000",
+    "test": "npx hardhat test",
+    "compile": "touch build/contracts/horse && rm -rf build/contracts/* && npx hardhat compile",
     "mocha": "mocha"
   },
   "repository": {
@@ -27,10 +27,17 @@
     "truffle-flatten": "^1.0.8"
   },
   "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/test-environment": "^0.1.6",
     "@openzeppelin/test-helpers": "^0.5.9",
     "chai": "^4.2.0",
+    "dotenv": "8.2.0",
+    "ethers": "^5.3.0",
     "mocha": "^8.2.0",
-    "redis": "^3.0.2"
+    "redis": "^3.0.2",
+    "ethereum-waffle": "^3.3.0",
+    "assert": "2.0.0"
   }
 }
